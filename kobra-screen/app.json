@@ -1,45 +1,45 @@
 {
     "$version": "1",
     "name": "Kobra Screen",
-    "description": "Anycubic Kobra 3 ve ACE Pro için dokunmatik ekran arayüzü (Moonraker / Klipper)",
-    "version": "0.3.0",
+    "description": "Touchscreen UI for the Anycubic Kobra 3 and ACE Pro (Moonraker / Klipper)",
+    "version": "0.3.1",
     "requirements": {
         "cpu": 5,
         "memory": 25
     },
     "properties": {
         "moonraker_host": {
-            "display": "Moonraker sunucusu",
+            "display": "Moonraker host",
             "type": "text",
             "default": "127.0.0.1"
         },
         "moonraker_port": {
-            "display": "Moonraker portu",
+            "display": "Moonraker port",
             "type": "number",
             "range": [1, 65535],
             "default": 7125
         },
         "touch_calibration": {
-            "display": "Dokunmatik kalibrasyonu (min_x,min_y,max_x,max_y)",
+            "display": "Touch calibration (min_x,min_y,max_x,max_y)",
             "type": "text",
             "default": ""
         },
         "touch_swap_axes": {
-            "display": "Dokunmatik eksenlerini değiştir",
+            "display": "Swap touch axes",
             "type": "enum",
             "options": ["false", "true"],
             "default": "false"
         },
         "wifi_interface": {
-            "display": "Wi-Fi ağ arayüzü",
+            "display": "Wi-Fi interface",
             "type": "text",
             "default": "wlan0"
         },
         "language": {
-            "display": "Dil / Language",
+            "display": "Language",
             "type": "enum",
-            "options": ["tr", "en"],
-            "default": "tr"
+            "options": ["en", "tr"],
+            "default": "en"
         }
     }
 }

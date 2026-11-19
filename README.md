@@ -1,127 +1,158 @@
 # open-kobra
 
-**Anycubic Kobra 3 + ACE Pro için Rinkhals eklenti paketi.** Yazıcıya USB bellekle kurulur; SSH, bilgisayarda kurulum aracı veya kablo gerekmez.
+**A Rinkhals add-on package for the Anycubic Kobra 3 + ACE Pro.** It installs from a USB stick: no SSH, no tools on your computer, no cables.
 
-*English summary at the bottom.*
+> ⚠️ **Experimental software.** Tested on a single Kobra 3 only. It makes persistent changes to your printer (an uninstall package is provided). No warranty of any kind; use at your own risk.
 
-> ⚠️ **Deneysel yazılım.** Yalnızca tek bir Kobra 3'te test edildi. Yazıcınızda kalıcı değişiklik yapar (geri alma paketi var). Hiçbir garanti verilmez; kullanım riski size aittir.
+## What it does
 
-## Ne yapar?
-
-| Bileşen | Ne işe yarar |
+| Component | Purpose |
 |---|---|
-| **kobra-screen** | Yazıcının dokunmatik ekranı için yeni arayüz (Türkçe / İngilizce). Mainline Klipper + Moonraker ile çalışır: baskı, sıcaklık, eksenler, dosyalar, ACE Pro yuvaları ve kurutma, Wi-Fi, sihirbazlar (Z-offset ölçümü, nozul temizleme). Kurulumdan sonra **kapalı** gelir. |
-| **ACE Pro sürücüsü** | Klipper için ACE Pro sürücüsü: filament yükleme/boşaltma, kurutma, RFID, dolaşma koruması. Bağlantı kopmalarına ve kurutma hatalarına karşı düzeltmeler içerir. |
-| **LeviQ3** | Stok yazılımdaki otomatik Z-offset (nozul teması ile) ve tabla seviyeleme komutlarının mainline Klipper için yeniden yazılmış hali. |
-| **numpy** | Klipper'ın rezonans ölçümü (`SHAPER_CALIBRATE`) için gereken numpy, yazıcının işlemcisi için derlenmiş olarak gelir. |
-| **Açılış bekçisi** | Rinkhals veya Klipper güncellemesi LeviQ3 dosyalarını silerse açılışta geri yükler; yükleyemezse Klipper'ın yine de açılmasını sağlar. |
-| **ace-standalone** | Klipper ACE sürücüsü kullanılmıyorken yalnızca ACE Pro'yu (kurutma, filament) yönetmek için küçük bir web paneli. Kapalı gelir. |
+| **kobra-screen** | A new touchscreen UI for mainline Klipper + Moonraker (English / Turkish): printing, temperatures, axes, files, ACE Pro slots and drying, Wi-Fi, wizards (Z-offset measurement, nozzle cleaning, cold pull, PID, input shaper). Installed **disabled**. |
+| **ACE Pro driver** | Klipper driver for the ACE Pro: load/unload, drying, RFID, tangle protection. Based on [Kobra-S1/ACEPRO](https://github.com/Kobra-S1/ACEPRO) with fixes for USB disconnects, drying and error handling. |
+| **LeviQ3** | A mainline Klipper re-implementation of the stock firmware's automatic Z-offset (nozzle contact) and bed leveling commands. |
+| **numpy** | numpy built for the printer's CPU and C library, so Klipper's resonance measurement (`SHAPER_CALIBRATE`) works on the printer itself. |
+| **Boot guard** | If a Rinkhals or Klipper update deletes the LeviQ3 files, restores them at boot; if it cannot, it makes sure Klipper still starts. |
+| **ace-standalone** | A small web panel for running only the ACE Pro (drying, filament) while the Klipper ACE driver is not using it. Installed disabled. |
 
-Paket Anycubic'in stok dosyalarına yazmaz; yalnızca Rinkhals'ın kullanıcı alanına ve vanilla-klipper uygulamasının içine dosya koyar.
+The package never writes to Anycubic's stock files; it only adds files to the Rinkhals user area and to the vanilla-klipper app.
 
-## Gereksinimler
+## Screenshots
 
-**Gerekli:**
+<table>
+  <tr>
+    <td><img src="docs/screenshots/01-home-idle.png" width="180" alt="Home"></td>
+    <td><img src="docs/screenshots/04-home-printing.png" width="180" alt="Printing"></td>
+    <td><img src="docs/screenshots/13-spools-dryer.png" width="180" alt="Spools and ACE dryer"></td>
+    <td><img src="docs/screenshots/14-slot.png" width="180" alt="ACE slot"></td>
+  </tr>
+  <tr>
+    <td align="center">Home</td>
+    <td align="center">Printing</td>
+    <td align="center">Spools and ACE dryer</td>
+    <td align="center">ACE slot</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/07-control-heat.png" width="180" alt="Temperatures"></td>
+    <td><img src="docs/screenshots/25-bed-mesh.png" width="180" alt="Bed mesh"></td>
+    <td><img src="docs/screenshots/20-tools.png" width="180" alt="Tools"></td>
+    <td><img src="docs/screenshots/30-settings.png" width="180" alt="Settings"></td>
+  </tr>
+  <tr>
+    <td align="center">Temperatures</td>
+    <td align="center">Bed mesh</td>
+    <td align="center">Tools and wizards</td>
+    <td align="center">Settings</td>
+  </tr>
+</table>
 
-- **Anycubic Kobra 3** (veya Kobra 3 Combo). Kurulum betiği model numarasını denetler; başka modelde hiçbir şeye dokunmadan durur.
-- **Rinkhals** kurulu olmalı: <https://github.com/jbatonnet/Rinkhals>
-- Rinkhals'ın **vanilla-klipper** uygulaması (ACE destekli sürüm) kurulu olmalı.
-- Rinkhals'ın **Moonraker** uygulaması (`40-moonraker`). Rinkhals ile birlikte gelir.
-- **FAT32** biçimli, **MBR** bölümlü bir USB bellek (GPT çalışmaz).
-- Yazıcıda en az 10 MB boş alan.
+**All 49 screens, one per page:** [docs/screenshots](docs/screenshots/README.md) · **everything on one sheet:** [sheet.png](docs/screenshots/sheet.png)
 
-**Test edilen sürümler:** Kobra 3 firmware 2.4.6.7, Rinkhals 20261101_01, vanilla-klipper 0.3, ACE Pro (1. nesil) firmware V1.3.863.
+## Requirements
 
-**İsteğe bağlı:**
+**Required:**
 
-- **ACE Pro.** ACE Pro yoksa paketin geri kalanı yine çalışır. ACE Pro 2. nesil test edilmedi.
+- **Anycubic Kobra 3** (or Kobra 3 Combo). The installer checks the model and stops without touching anything on other printers.
+- **Rinkhals** installed and running: <https://github.com/jbatonnet/Rinkhals>
+- The **vanilla-klipper app with ACE Pro support** from [Kobra-S1/vanilla-klipper-swu](https://github.com/Kobra-S1/vanilla-klipper-swu). It is a separate project and is not bundled here; see step 1 below.
+- Rinkhals' **Moonraker** app (`40-moonraker`). It ships with Rinkhals.
+- A USB stick formatted **FAT32** with an **MBR** partition table (GPT does not work).
+- At least 10 MB free on the printer.
 
-**Gerekli değil:** SSH, ADB, Docker, bilgisayara program kurmak, internet bağlantısı (kurulum sırasında).
+**Tested with:** Kobra 3 firmware 2.4.6.7, Rinkhals 20261101_01, vanilla-klipper 0.3, ACE Pro (Gen 1) firmware V1.3.863.
 
-## Kurulum (USB)
+**Optional:**
 
-1. [Releases](../../releases) sayfasından **`open-kobra-<sürüm>-install.zip`** dosyasını indirin.
-2. Zip'i USB belleğin **köküne** açın. USB'de şu dosya olmalı: `aGVscF9zb3Nf/update.swu`
-3. Yazıcı açıkken USB belleği takın.
-   - **1 bip:** kurulum başladı.
-   - **2. bip:** kurulum bitti.
-   - **3 kısa bip:** hata oluştu. O çalışmadaki değişiklikler otomatik geri alınır. Ayrıntı USB'deki `aGVscF9zb3Nf/open-kobra-install.log` dosyasındadır.
-4. USB belleği çıkarın ve **yazıcıyı yeniden başlatın.**
-5. Yeni ekran arayüzünü kullanmak için: yazıcı ekranında **Settings → Rinkhals → Manage apps** menüsünde `kobra-screen` kutusunu işaretleyip yeniden başlatın.
+- **ACE Pro.** Everything else works without it. ACE Pro 2 has not been tested.
 
-Güncelleme için yeni sürümün zip'iyle aynı adımları izleyin. Ayarlarınız korunur.
+**Not needed:** SSH, ADB, Docker, software on your computer, internet access during installation.
 
-> Rinkhals'ı veya vanilla-klipper uygulamasını güncelledikten sonra paketi bir kez daha kurun; bu güncellemeler Klipper'ın eklenti klasörünü sıfırlar. Açılış bekçisi LeviQ3'ü geri yükler, ama ACE sürücüsü ve numpy için yeniden kurulum gerekir.
+## Installation (USB)
 
-## Kaldırma
+The printer reads one `update.swu` per USB insertion, so installation takes two rounds.
 
-1. USB bellekteki eski `aGVscF9zb3Nf` klasörünü silin.
-2. **`open-kobra-<sürüm>-uninstall.zip`** dosyasını USB'nin köküne açın, yazıcıya takın ve 2. bipi bekleyin.
+### 1. Install vanilla-klipper (skip if already installed)
 
-Kaldırma, `printer.klipper.cfg` dosyanızı silmez. Z-offset, tabla haritası ve PID gibi kayıtlı ayarlar kalır.
+1. Download **`app-vanilla-klipper-k2p-k3.swu`** from the newest folder under [Kobra-S1/vanilla-klipper-swu → releases](https://github.com/Kobra-S1/vanilla-klipper-swu/tree/main/releases).
+2. On the USB stick, create a folder named `aGVscF9zb3Nf` and copy the file into it renamed to **`update.swu`** (`aGVscF9zb3Nf/update.swu`).
+3. Insert the USB stick into the printer. First beep: started. Second beep: done.
+4. On the printer screen open **Settings → Rinkhals → Manage apps**, tick **vanilla-klipper**, then **Enable App → Start App**. The first start takes about a minute.
+5. If you have an ACE Pro: in Mainsail, open `printer.klipper.cfg`, remove the `#` in front of `[include ace_K3.cfg]`, save and restart Klipper.
 
-## Sorun olursa
+Details: [vanilla-klipper installation guide](https://github.com/Kobra-S1/vanilla-klipper-swu/blob/main/vanilla-klipper.md).
 
-- **Yazıcı açılmıyor veya takılıyor:** USB belleğin köküne `.disable-rinkhals` adlı boş bir dosya koyup yazıcıyı yeniden başlatın. Stok Anycubic yazılımı açılır. Sorunu giderdikten sonra `.enable-rinkhals` dosyasıyla Rinkhals'ı geri açabilirsiniz.
-- **Ekran arayüzü açılmıyor:** `kobra-screen` art arda çökerse kendini kapatır ve stok ekranı geri getirir. Ekrandan **Ayarlar → Stok moda dön** ile de stok moda dönebilirsiniz.
-- Ayrıntılı kurulum ve kurtarma notları: [open-kobra/README.md](open-kobra/README.md)
+### 2. Install open-kobra
 
-## Kaynaktan derleme
+1. Download **`open-kobra-<version>-install.zip`** from [Releases](../../releases).
+2. Delete the old `aGVscF9zb3Nf` folder from the USB stick, then unzip the file to the **root** of the stick. It must contain `aGVscF9zb3Nf/update.swu`.
+3. Insert the USB stick while the printer is on.
+   - **1 beep:** installation started.
+   - **2nd beep:** installation finished.
+   - **3 short beeps:** something went wrong. Changes from that run are rolled back automatically. Details are in `aGVscF9zb3Nf/open-kobra-install.log` on the stick.
+4. Remove the USB stick and **restart the printer.**
+5. To use the new touchscreen UI: on the printer screen open **Settings → Rinkhals → Manage apps**, tick `kobra-screen` and restart.
 
-Bir Linux bilgisayarda `sh`, `tar`, `gzip`, `zip`, `md5sum` ve `python3` yeterli:
+To update, repeat step 2 with the new version's zip. Your settings are kept.
+
+> After updating Rinkhals or the vanilla-klipper app, install open-kobra once more: those updates reset Klipper's extension folder. The boot guard restores LeviQ3, but the ACE driver and numpy need a reinstall.
+
+## Uninstalling
+
+1. Delete the old `aGVscF9zb3Nf` folder from the USB stick.
+2. Unzip **`open-kobra-<version>-uninstall.zip`** to the root of the stick, insert it and wait for the second beep.
+
+Uninstalling does not delete your `printer.klipper.cfg`; saved settings such as Z-offset, bed mesh and PID stay.
+
+## If something goes wrong
+
+- **The printer does not boot or hangs:** put an empty file named `.disable-rinkhals` in the root of a USB stick and restart the printer. The stock Anycubic software starts. Once fixed, an empty `.enable-rinkhals` file turns Rinkhals back on.
+- **The touchscreen UI does not start:** if `kobra-screen` crashes repeatedly it disables itself and brings back the stock screen. You can also go back from the screen with **Settings → Return to stock**.
+- More installation and recovery notes: [open-kobra/README.md](open-kobra/README.md)
+
+## Building from source
+
+On a Linux computer you only need `sh`, `tar`, `gzip`, `zip`, `md5sum` and `python3`:
 
 ```sh
 cd open-kobra
 ./build.sh
 ```
 
-Çıktı `open-kobra/dist/install/aGVscF9zb3Nf/update.swu` dosyasıdır; bu klasörü USB'nin köküne kopyalayın.
+The result is `open-kobra/dist/install/aGVscF9zb3Nf/update.swu`; copy that folder to the root of the USB stick.
 
-Testler:
+Tests:
 
 ```sh
 cd open-kobra && ./test.sh
-cd kobra-screen && python3 -m unittest discover -p 'test_*.py'   # Pillow gerekir
+cd kobra-screen && python3 -m unittest discover -p 'test_*.py'   # needs Pillow
 cd ace-driver && python3 -m unittest discover -s tests
 cd leviq3-klipper && python3 -m unittest test_leviq3
 ```
 
-Arayüzdeki metin sığma testleri yazıcının yazı tipini (`AlibabaSans-Regular.ttf`) ister. Bu dosya lisansı belirsiz olduğu için depoda yok; Rinkhals'tan alıp `kobra-screen/fonts/` altına koyarsanız bu testler de çalışır, yoksa atlanır.
+The UI text-fit tests need the printer's font (`AlibabaSans-Regular.ttf`). It is not in this repository because its license is unclear; copy it from Rinkhals into `kobra-screen/fonts/` to run those tests, otherwise they are skipped.
 
-## Klasörler
+## Folders
 
-| Klasör | İçerik |
+| Folder | Contents |
 |---|---|
-| `open-kobra/` | USB kurulum paketi: derleme betiği, kurulum/kaldırma betikleri, açılış bekçisi, testler |
-| `kobra-screen/` | Dokunmatik ekran arayüzü |
-| `ace-driver/` | Klipper ACE Pro sürücüsü |
-| `leviq3-klipper/` | LeviQ3 Klipper eklentisi |
-| `ace-standalone/` | Bağımsız ACE Pro web paneli |
-| `tools/ace-fw/` | İleri düzey: ACE Pro kurutucu soğutma süresi yaması (ayrıntı içinde; SSH gerektirir) |
-| `tools/numpy-uclibc/` | Paketteki numpy'ın nasıl derlendiği |
+| `open-kobra/` | USB installation package: build script, install/uninstall scripts, boot guard, tests |
+| `kobra-screen/` | Touchscreen UI |
+| `ace-driver/` | Klipper ACE Pro driver |
+| `leviq3-klipper/` | LeviQ3 Klipper extension |
+| `ace-standalone/` | Standalone ACE Pro web panel |
+| `tools/ace-fw/` | Advanced: ACE Pro dryer cool-down patch (details inside; needs SSH) |
+| `tools/numpy-uclibc/` | How the bundled numpy was built |
 
-## Öneri, hata bildirimi, güvenlik
+## Feedback, bugs, security
 
-- **Hata bildirimi ve öneriler:** [Issues](../../issues) sayfasından yeni kayıt açın. Fikirler ve sorular için [Discussions](../../discussions) da açık.
-- **Güvenlik açığı:** herkese açık kayıt açmayın; [SECURITY.md](SECURITY.md) dosyasındaki yolu izleyin.
-- Katkı: [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Bugs and feature requests:** open an issue on the [Issues](../../issues) page. Questions and ideas are welcome in [Discussions](../../discussions).
+- **Security vulnerabilities:** do not open a public issue; follow [SECURITY.md](SECURITY.md).
+- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 
-Kayıt açarken günlük dosyalarındaki Wi-Fi adınızı, IP adreslerinizi ve seri numaranızı silin.
+Before attaching logs, remove your Wi-Fi name, IP addresses and serial numbers.
 
-## Lisans
+## License
 
-GPLv3, bkz. [LICENSE](LICENSE). Üçüncü taraf bileşenler: [NOTICE.md](NOTICE.md).
+GPLv3, see [LICENSE](LICENSE). Third-party components and credits: [NOTICE.md](NOTICE.md).
 
-Bu proje Anycubic ile bağlantılı değildir. "Anycubic", "Kobra" ve "ACE Pro" sahiplerinin markalarıdır.
-
----
-
-## English summary
-
-**open-kobra** is a Rinkhals add-on package for the **Anycubic Kobra 3 (+ ACE Pro)**, installed from a USB stick (no SSH needed). It adds a new touchscreen UI for mainline Klipper/Moonraker (`kobra-screen`), an improved Klipper ACE Pro driver, a LeviQ3 (auto Z-offset) port for mainline Klipper, numpy for resonance measurement, and a boot guard. **Experimental, tested on a single printer, no warranty.**
-
-**Requirements:** Kobra 3, [Rinkhals](https://github.com/jbatonnet/Rinkhals), Rinkhals' vanilla-klipper app (ACE-enabled build) and Moonraker app, a FAT32/MBR USB stick. Tested on firmware 2.4.6.7, Rinkhals 20261101_01, vanilla-klipper 0.3, ACE Pro Gen1 V1.3.863.
-
-**Install:** download `open-kobra-<version>-install.zip` from Releases, unzip it to the USB root (`aGVscF9zb3Nf/update.swu`), plug it into the printer, wait for the second beep (three short beeps = error, changes rolled back, see `aGVscF9zb3Nf/open-kobra-install.log`), then reboot. Enable `kobra-screen` under *Settings → Rinkhals → Manage apps*. Uninstall the same way with the uninstall zip.
-
-**Bugs and ideas:** Issues / Discussions. **Security issues:** see [SECURITY.md](SECURITY.md). **License:** GPLv3.
+This project is not affiliated with Anycubic. "Anycubic", "Kobra" and "ACE Pro" are trademarks of their owners.

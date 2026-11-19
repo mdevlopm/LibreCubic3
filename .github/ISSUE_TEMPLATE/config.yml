@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Güvenlik açığı / Security vulnerability
+  - name: Security vulnerability
     url: https://github.com/mdevlopm/open-kobra/security/advisories/new
-    about: Güvenlik açıklarını gizli bildirin / Report security issues privately
+    about: Report security issues privately
+  - name: Questions and ideas
+    url: https://github.com/mdevlopm/open-kobra/discussions
+    about: Ask and discuss in Discussions

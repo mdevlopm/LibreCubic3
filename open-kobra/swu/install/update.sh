@@ -1315,7 +1315,7 @@ fi
 # Dosya yoksa {} oluştur; varsa dokunma (kullanıcı değeri korunur).
 if [ ! -e "$KOBRA_SCREEN_CFG_DEST" ]; then
     KSCFG_TMP="${KOBRA_SCREEN_CFG_DEST}.openkobra.tmp"
-    if printf '{}\n' > "$KSCFG_TMP" && sync && mv "$KSCFG_TMP" "$KOBRA_SCREEN_CFG_DEST" && sync; then
+    if printf '{"language": "en"}\n' > "$KSCFG_TMP" && sync && mv "$KSCFG_TMP" "$KOBRA_SCREEN_CFG_DEST" && sync; then
         log_msg "Boş kobra-screen.config oluşturuldu: $KOBRA_SCREEN_CFG_DEST"
     else
         rm -f "$KSCFG_TMP" 2>/dev/null || true

@@ -1,30 +1,30 @@
-# Güvenlik politikası
+# Security policy
 
-## Güvenlik açığı bildirme
+## Reporting a vulnerability
 
-Güvenlik açıklarını **herkese açık Issue olarak açmayın.**
+**Please do not report security vulnerabilities as public issues.**
 
-Bu depo sayfasında **Security → Report a vulnerability** düğmesiyle GitHub üzerinden gizli bildirim gönderin. Bildirimi yalnızca proje sahibi görür.
+Use the **Security → Report a vulnerability** button on this repository to send a private report through GitHub. Only the maintainer can see it.
 
-Bildirime şunları ekleyin:
+Please include:
 
-- Etkilenen bileşen (kobra-screen, ACE sürücüsü, kurulum paketi, ace-standalone…) ve sürüm (`open-kobra/VERSION`)
-- Sorunu yeniden üretme adımları
-- Olası etki (ör. ağdan yetkisiz erişim, yazıcıyı tehlikeli sıcaklığa çıkarma, dosya silme)
+- The affected component (kobra-screen, ACE driver, install package, ace-standalone…) and version (`open-kobra/VERSION`)
+- Steps to reproduce
+- The possible impact (e.g. unauthenticated network access, driving a heater to a dangerous temperature, deleting files)
 
-Günlüklerden Wi-Fi adı, IP adresi, seri numarası ve parola gibi bilgileri çıkarın.
+Remove Wi-Fi names, IP addresses, serial numbers and passwords from any logs.
 
-## Kapsam
+## Scope
 
-Özellikle şunlar önemlidir:
+Of particular interest:
 
-- Ağdan erişilebilen servisler: ace-standalone web paneli (varsayılan yalnızca `127.0.0.1`), Moonraker ile konuşan bileşenler
-- Isıtıcıların veya motorların güvenlik sınırlarını aşan davranışlar
-- Kurulum ve kaldırma betiklerinde yanlış dosyanın silinmesi veya üzerine yazılması
-- Kurulum paketinin bütünlük denetimlerinin atlatılması
+- Network-reachable services: the ace-standalone web panel (listens on `127.0.0.1` only by default) and components that talk to Moonraker
+- Behaviour that bypasses heater or motor safety limits
+- Install or uninstall scripts deleting or overwriting the wrong files
+- Bypassing the install package's integrity checks
 
-Rinkhals'ın, Klipper'ın, Moonraker'ın veya Anycubic stok yazılımının kendi açıklarını ilgili projelere bildirin.
+Please report issues in Rinkhals, Klipper, Moonraker or the Anycubic stock software to those projects.
 
-## Destek
+## Support
 
-Bu gönüllü bir projedir; yanıt süresi garanti edilmez. Doğrulanan açıklar için düzeltme yayınlanır ve sürüm notlarında belirtilir.
+This is a volunteer project; response times are not guaranteed. Fixes for confirmed vulnerabilities are released and mentioned in the release notes.

@@ -2,6 +2,7 @@
 """Render every screen against the fake Moonraker into preview/sheet.png and preview/sheet_en.png."""
 
 import os
+import sys
 import tempfile
 
 from PIL import Image
@@ -16,7 +17,7 @@ from kobra_screen.widgets import HEIGHT, WIDTH
 COLUMNS = 5
 
 
-def render_sheet(lang, out_path):
+def render_sheet(lang, out_path, pages_dir=None):
     printer = FakePrinter()
     httpd = serve(printer, simulate=False)
     tmp_home = tempfile.TemporaryDirectory()
@@ -160,6 +161,10 @@ def render_sheet(lang, out_path):
             sheet.paste(image, (10 + (i % COLUMNS) * (WIDTH + 10), 10 + (i // COLUMNS) * (HEIGHT + 10)))
         os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
         sheet.save(out_path)
+        if pages_dir:
+            os.makedirs(pages_dir, exist_ok=True)
+            for i, image in enumerate(shots):
+                image.save(os.path.join(pages_dir, "%02d.png" % (i + 1)), optimize=True)
         print("%s: %d ekran -> %s" % (lang, len(shots), out_path))
     finally:
         httpd.shutdown()
@@ -168,8 +173,10 @@ def render_sheet(lang, out_path):
 
 
 def main():
-    render_sheet("tr", "preview/sheet.png")
-    render_sheet("en", "preview/sheet_en.png")
+    # --pages also writes every screen as its own PNG (preview/pages_<lang>/NN.png)
+    pages = "--pages" in sys.argv[1:]
+    render_sheet("tr", "preview/sheet.png", "preview/pages_tr" if pages else None)
+    render_sheet("en", "preview/sheet_en.png", "preview/pages_en" if pages else None)
 
 
 if __name__ == "__main__":

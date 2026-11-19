@@ -1,22 +1,22 @@
-# Katkı
+# Contributing
 
-Hata bildirimleri, öneriler ve kod katkıları memnuniyetle karşılanır.
+Bug reports, ideas and code contributions are welcome.
 
-- **Hata ve öneri:** [Issues](../../issues) sayfasında uygun şablonu seçin. Soru ve fikir tartışması için Discussions.
-- **Güvenlik açığı:** [SECURITY.md](SECURITY.md).
+- **Bugs and feature requests:** pick a template on the [Issues](../../issues) page. Use Discussions for questions and ideas.
+- **Security vulnerabilities:** see [SECURITY.md](SECURITY.md).
 
-## Kod katkısı
+## Code contributions
 
-1. Depoyu fork'layın, bir dal açın.
-2. Değişikliğinizin testini ekleyin ve testleri çalıştırın:
+1. Fork the repository and create a branch.
+2. Add a test for your change and run the tests:
    ```sh
    cd open-kobra && ./test.sh
    cd kobra-screen && python3 -m unittest discover -p 'test_*.py'
    cd ace-driver && python3 -m unittest discover -s tests
    cd leviq3-klipper && python3 -m unittest test_leviq3
    ```
-3. Kabuk betikleri yazıcıdaki BusyBox `sh` ile çalışır: bash'e özgü sözdizimi kullanmayın (`test.sh` bunu denetler).
-4. Yazıcıda Python 3.11 (uClibc) çalışır; standart kütüphane dışında bağımlılık eklemeyin.
-5. Pull request açın; ne değiştiğini ve yazıcıda denenip denenmediğini yazın.
+3. Shell scripts run under BusyBox `sh` on the printer: no bash-only syntax (`test.sh` checks this).
+4. The printer runs Python 3.11 (uClibc); do not add dependencies outside the standard library.
+5. Open a pull request describing what changed and whether you tried it on a printer.
 
-Katkılar GPLv3 altında kabul edilir.
+Contributions are accepted under GPLv3.

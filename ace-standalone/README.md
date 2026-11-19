@@ -1,43 +1,43 @@
 # ace-standalone
 
-Anycubic ACE Pro'yu (1. nesil, JSON protokolü) yazıcı olmadan, bir bilgisayardan web paneliyle kullanır: kurutma başlat/durdur, kabin sıcaklığı, yuvalar, filament besle/geri sar. Yalnızca Python standart kütüphanesi gerekir (Linux).
+Runs an Anycubic ACE Pro (Gen 1, JSON protocol) without a printer, from a web panel: start/stop drying, chamber temperature, slots, feed/retract filament. Needs only the Python standard library (Linux). On the printer it is installed as a Rinkhals app by the open-kobra package (disabled by default).
 
-## Çalıştırma
+## Running
 
 ```bash
-python3 server.py --fake          # donanımsız dene (yazılım ACE)
-python3 server.py                 # gerçek ACE, port otomatik bulunur
-python3 server.py --port /dev/ttyACM0 --host 0.0.0.0   # ağdan erişim (erişim anahtarı gerekir)
+python3 server.py --fake          # try it without hardware (software ACE)
+python3 server.py                 # real ACE, port detected automatically
+python3 server.py --port /dev/ttyACM0 --host 0.0.0.0   # network access (access key required)
 ```
 
-Panel: http://127.0.0.1:8090/ (komut satırı varsayılanı 8090; Rinkhals uygulamasında `http_port` varsayılanı 8890). Varsayılan dinleme adresi yalnızca bu bilgisayardır (Rinkhals uygulamasında da `bind_host` varsayılanı `127.0.0.1`). Ağdan erişmek için `--host 0.0.0.0` (Rinkhals'ta `bind_host`) verilir; bu durumda **erişim anahtarı zorunludur**: `--access-key ANAHTAR` ya da config dosyasındaki `access_key`; ikisi de yoksa sunucu rastgele bir anahtar üretir, config dosyasına yazar ve günlüğe bir kez basar. Tüm `/api/*` istekleri anahtarı `X-Access-Key` başlığıyla göndermelidir; web sayfası anahtarı bir kez sorar ve tarayıcıda hatırlar. Loopback'te anahtar istenmez (anahtar tanımlıysa yine denetlenir).
+Panel: http://127.0.0.1:8090/ (command-line default 8090; the Rinkhals app's `http_port` default is 8890). By default it listens on this computer only (the Rinkhals app's `bind_host` default is also `127.0.0.1`). For network access pass `--host 0.0.0.0` (`bind_host` in Rinkhals); an **access key is then mandatory**: `--access-key KEY` or `access_key` in the config file. If neither is set, the server generates a random key, writes it to the config file and prints it once to the log. All `/api/*` requests must send the key in the `X-Access-Key` header; the web page asks for it once and remembers it in the browser. No key is required on loopback (if one is configured it is still checked).
 
-Rinkhals'ta `vanilla-klipper` etkinken ve yapılandırması ACE sürücüsünü kullanıyorken uygulama başlamayı reddeder (açılışta bu uygulama klippy'den ~15 sn önce başlar; iki süreç aynı seri portu paylaşamaz).
+On Rinkhals the app refuses to start while vanilla-klipper is enabled and its configuration uses the ACE driver (at boot this app starts about 15 s before Klipper; two processes cannot share the serial port).
 
-Testler: `python3 -m unittest -v`
+Tests: `python3 -m unittest -v`
 
-## Bağlantı
+## Wiring (computer use)
 
-ACE'nin kendi şebeke beslemesi vardır; bilgisayara yalnızca USB veri hattı gider. ACE tarafı 4 pinli Molex Micro-Fit, ACEResearch'e göre: 1 = 3,5 V (amacı bilinmiyor), 2 = GND, 3 = D-, 4 = D+. Kabloda yalnızca GND, D-, D+ bağlanır; 5 V (VBUS) bağlanmaz. Pin sırası kaynakta "test edilmedi" notuyla verilmiş, kabloyu yapmadan önce multimetreyle doğrula.
+The ACE has its own mains supply; only the USB data lines go to the computer. The ACE side is a 4-pin Molex Micro-Fit; according to ACEResearch: 1 = 3.5 V (purpose unknown), 2 = GND, 3 = D-, 4 = D+. Connect only GND, D- and D+; do not connect 5 V (VBUS). The source marks the pin order as "untested": check it with a multimeter before making a cable.
 
-## Sınırlar
+## Limits
 
-En yüksek sıcaklık ve süre panelin Ayarlar bölümünden değiştirilir (varsayılan 55 °C, 1440 dk; `max_temp` en çok 100 °C olabilir; dosya: `~/.config/ace-standalone/config.json`). Bunlar yalnızca panelin gönderdiği değeri kısıtlar.
+Maximum temperature and duration are set in the panel's Settings section (defaults 55 °C, 1440 min; `max_temp` at most 100 °C; file: `~/.config/ace-standalone/config.json`). They only limit what the panel sends.
 
 ## API
 
-`GET /api/state`, `POST /api/dry {temp, duration[, fan_speed]}`, `/api/dry/stop`, `/api/feed`, `/api/unwind` `{index, length, speed}`, `/api/feed/stop`, `/api/unwind/stop`, `/api/feed_assist/start|stop {index}`, `/api/filament_info {index}`, `/api/config`, `/api/raw {method, params}` (herhangi bir ACE komutu; `drying`/`set_fan_speed` ve `temp`/`duration`/`fan_speed` alanları dedicated rotalarla aynı sınırlardan geçer). Config dosyası 0600 izniyle yazılır.
+`GET /api/state`, `POST /api/dry {temp, duration[, fan_speed]}`, `/api/dry/stop`, `/api/feed`, `/api/unwind` `{index, length, speed}`, `/api/feed/stop`, `/api/unwind/stop`, `/api/feed_assist/start|stop {index}`, `/api/filament_info {index}`, `/api/config`, `/api/raw {method, params}` (any ACE command; `drying`/`set_fan_speed` and the `temp`/`duration`/`fan_speed` fields go through the same limits as the dedicated routes). The config file is written with mode 0600.
 
-## Doğrulanmamış noktalar
+## Unverified points
 
-Kod gerçek bir ACE ile denenmedi, yalnızca `fake_ace.py` ile. Bilinmeyenler:
+The panel itself has been tested against `fake_ace.py`, not end to end on a real ACE. Unknowns:
 
-- ACE yazılımının kendi sıcaklık üst sınırı var mı, yüksek hedefi reddediyor mu yoksa kırpıyor mu.
-- USB ürün adı gerçekten "ACE" içeriyor mu (otomatik port bulma buna dayanıyor; bulamazsa `--port` ver).
-- Bilgisayar bağlantısı koparsa süren kurutma devam ediyor mu.
-- `drying` komutunda `fan_speed` alanının etkisi (panel varsayılan olarak göndermez).
+- Whether the USB product name always contains "ACE" (automatic port detection relies on it; pass `--port` if it fails).
+- Whether the ACE firmware has its own temperature ceiling, and whether it rejects or clamps a high target.
+- Whether drying continues if the host connection drops.
+- The effect of the `fan_speed` field of the `drying` command (the panel does not send it by default).
 
-## Kaynaklar
+## References
 
-- Protokol: [printers-for-people/ACEResearch](https://github.com/printers-for-people/ACEResearch) (CC0)
-- Çapraz kontrol: [ACEPRO Klipper sürücüsü](https://github.com/justinh-rahb/ACEPRO) (GPL-3.0; kod kopyalanmadı, CRC sonucu ve komut biçimleri karşılaştırıldı)
+- Protocol: [printers-for-people/ACEResearch](https://github.com/printers-for-people/ACEResearch) (CC0)
+- Cross-check: [ACEPRO Klipper driver](https://github.com/Kobra-S1/ACEPRO) (GPL-3.0; no code copied, CRC results and command formats compared)
