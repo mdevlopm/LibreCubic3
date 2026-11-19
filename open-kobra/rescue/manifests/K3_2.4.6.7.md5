@@ -1,0 +1,6 @@
+# Anycubic Kobra 3 (modelId 20024) firmware 2.4.6.7 official stock binary MD5 manifest
+# Format: <32-hex-md5>  <binary_name>
+25b5e89b7f25ebcb0e45f26dac5fabe6  gkapi
+61ef528ac60075a4c2faf5fa0e30a90f  K3SysUi
+004813e067410f0feb9838957d96a387  gklib
+8e82e25a315621d552e3b39436516fb1  gkcam

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACE Pro Paneli</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --text: #1c2026; --muted: #667080;
+    --line: #dde1e7; --accent: #c2560f; --ok: #1f7a45; --bad: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171b; --card: #1e2228; --text: #e8eaed; --muted: #98a2b3;
+      --line: #313740; --accent: #f08a3c; --ok: #5fc48a; --bad: #f2867f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.45 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 1.3rem; margin: 0; }
+  h2 { font-size: 1rem; margin: 0 0 10px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .muted { color: var(--muted); font-size: .88rem; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); }
+  .big { font-size: 2.4rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  label { display: grid; gap: 4px; font-size: .88rem; color: var(--muted); }
+  input { width: 7.5rem; padding: 8px; font: inherit; color: var(--text);
+          background: var(--bg); border: 1px solid var(--line); border-radius: 7px; }
+  button { padding: 8px 14px; font: inherit; border-radius: 7px; cursor: pointer;
+           border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .slot { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+          padding: 8px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .slot:first-of-type { border-top: 0; }
+  .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%;
+            border: 1px solid var(--line); vertical-align: -2px; margin-right: 6px; }
+  #msg { min-height: 1.4em; }
+  details summary { cursor: pointer; font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>ACE Pro Paneli</h1>
+    <span id="conn" class="muted">bağlanıyor…</span>
+  </header>
+
+  <section class="card">
+    <div class="stats">
+      <div><div class="muted">Kabin sıcaklığı</div><div class="big"><span id="temp">–</span>°C</div></div>
+      <div><div class="muted">Kurutma</div><div id="dryState">–</div><div class="muted" id="dryDetail"></div></div>
+      <div><div class="muted">Fan</div><div id="fan">–</div></div>
+      <div><div class="muted">Cihaz</div><div id="model" class="muted">–</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Kurutma</h2>
+    <div class="row">
+      <label>Sıcaklık (°C)<input id="dryTemp" type="number" min="1"></label>
+      <label>Süre (dakika)<input id="dryDur" type="number" min="1"></label>
+      <button class="primary" id="dryStart">Başlat</button>
+      <button id="dryStop">Durdur</button>
+    </div>
+    <p class="row" style="margin:10px 0 0">
+      <button data-preset="45,240">PLA 45° / 4 sa</button>
+      <button data-preset="50,240">TPU 50° / 4 sa</button>
+      <button data-preset="55,360">PETG 55° / 6 sa</button>
+    </p>
+    <p id="msg" class="muted"></p>
+  </section>
+
+  <section class="card">
+    <h2>Yuvalar</h2>
+    <div id="slots" class="muted">–</div>
+  </section>
+
+  <details class="card">
+    <summary>Ayarlar (sınırlar senin)</summary>
+    <div class="row" style="margin-top:10px">
+      <label>En yüksek sıcaklık (°C)<input id="cfgMaxTemp" type="number" min="1"></label>
+      <label>En uzun süre (dk)<input id="cfgMaxDur" type="number" min="1"></label>
+      <button id="cfgSave">Kaydet</button>
+    </div>
+    <p class="muted">Bu sınırlar yalnızca bu panelin gönderdiği değerleri kısıtlar. ACE'nin kendi yazılımı
+      daha yüksek bir hedefi reddedebilir veya kırpabilir; cihazın döndürdüğü hata burada görünür.</p>
+  </details>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let config = null, formFilled = false;
+
+// Access key: needed only when the server listens beyond loopback. Asked once, kept in this browser.
+let accessKey = '', keyAsked = false;
+try { accessKey = localStorage.getItem('aceKey') || ''; } catch (e) {}
+async function api(path, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({}, opts.headers, accessKey ? {'X-Access-Key': accessKey} : {});
+  let res = await fetch(path, opts);
+  if (res.status === 401 && !keyAsked) {
+    keyAsked = true;
+    const typed = prompt('Erişim anahtarı (sunucu günlüğünde / config.json içinde):');
+    if (typed) {
+      accessKey = typed.trim();
+      try { localStorage.setItem('aceKey', accessKey); } catch (e) {}
+      opts.headers['X-Access-Key'] = accessKey;
+      res = await fetch(path, opts);
+    }
+  }
+  if (res.status !== 401) keyAsked = false;
+  return res;
+}
+
+async function post(path, body) {
+  const res = await api(path, {method: 'POST', headers: {'Content-Type': 'application/json'},
+                               body: JSON.stringify(body || {})});
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function say(text, bad) {
+  $('msg').textContent = text;
+  $('msg').className = bad ? 'bad' : 'muted';
+}
+
+async function act(label, path, body) {
+  try { await post(path, body); say(label + ': tamam'); }
+  catch (e) { say(label + ': ' + e.message, true); }
+  refresh();
+}
+
+function renderSlots(slots) {
+  const box = $('slots');
+  if (!slots || !slots.length) { box.textContent = 'yuva bilgisi yok'; return; }
+  box.textContent = '';
+  box.className = '';
+  for (const s of slots) {
+    const row = document.createElement('div');
+    row.className = 'slot';
+    const info = document.createElement('span');
+    const sw = document.createElement('span');
+    sw.className = 'swatch';
+    const c = s.color || [0, 0, 0];
+    sw.style.background = `rgb(${c[0]},${c[1]},${c[2]})`;
+    info.append(sw, `Yuva ${s.index + 1}: ${s.type || '—'} (${s.status || '?'})`);
+    const buttons = document.createElement('span');
+    buttons.className = 'row';
+    const add = (text, path, body) => {
+      const b = document.createElement('button');
+      b.textContent = text;
+      b.onclick = () => act(`Yuva ${s.index + 1} ${text.toLowerCase()}`, path, body);
+      buttons.append(b);
+    };
+    add('Besle', '/api/feed', {index: s.index, length: 100, speed: 25});
+    add('Geri sar', '/api/unwind', {index: s.index, length: 100, speed: 20});
+    add('Dur', '/api/feed/stop', {index: s.index});
+    row.append(info, buttons);
+    box.append(row);
+  }
+}
+
+function formatDuration(sec) {
+  sec = Math.max(0, Math.round(Number(sec) || 0));
+  if (sec >= 3600) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    return `${h} sa ${String(m).padStart(2, '0')} dk`;
+  }
+  if (sec >= 60) return `${Math.floor(sec / 60)} dk`;
+  return `${sec} sn`;
+}
+
+async function refresh() {
+  let state;
+  try { state = await (await api('/api/state')).json(); if (state.error) throw new Error(state.error); }
+  catch (e) { $('conn').textContent = 'panel sunucusuna ulaşılamıyor'; $('conn').className = 'bad'; return; }
+  const ace = state.ace, st = ace.status;
+  config = state.config;
+  if (!formFilled) {
+    $('dryTemp').value = config.default_temp; $('dryDur').value = config.default_duration;
+    $('cfgMaxTemp').value = config.max_temp; $('cfgMaxDur').value = config.max_duration;
+    formFilled = true;
+  }
+  $('dryTemp').max = config.max_temp; $('dryDur').max = config.max_duration;
+  $('conn').textContent = ace.connected ? `bağlı (${ace.port})` : (ace.error || 'bağlı değil');
+  $('conn').className = ace.connected ? 'ok' : 'bad';
+  $('dryStart').disabled = $('dryStop').disabled = !ace.connected;
+  $('model').textContent = ace.info ? `${ace.info.model || 'ACE'} · ${ace.info.firmware || ''}` : '–';
+  if (!st) { $('temp').textContent = '–'; $('dryState').textContent = '–'; $('dryDetail').textContent = '';
+             $('fan').textContent = '–'; renderSlots(null); return; }
+  const dryer = st.dryer_status || st.dryer || {};
+  const drying = dryer.status === 'drying';
+  $('temp').textContent = st.temp ?? '–';
+  $('dryState').textContent = drying ? 'kurutuyor' : 'kapalı';
+  $('dryState').className = drying ? 'ok' : '';
+  $('dryDetail').textContent = drying ? `hedef ${dryer.target_temp}°C · kalan ${formatDuration(dryer.remain_time)}` : '';
+  $('fan').textContent = st.fan_speed != null ? st.fan_speed + ' rpm' : '–';
+  renderSlots(st.slots);
+}
+
+$('dryStart').onclick = () => act('Kurutma', '/api/dry',
+  {temp: parseInt($('dryTemp').value, 10), duration: parseInt($('dryDur').value, 10)});
+$('dryStop').onclick = () => act('Durdurma', '/api/dry/stop');
+$('cfgSave').onclick = () => act('Ayarlar', '/api/config',
+  {max_temp: parseInt($('cfgMaxTemp').value, 10), max_duration: parseInt($('cfgMaxDur').value, 10)});
+document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+  const [t, d] = b.dataset.preset.split(',');
+  $('dryTemp').value = t; $('dryDur').value = d;
+});
+
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>

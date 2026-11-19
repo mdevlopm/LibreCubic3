@@ -1,0 +1,48 @@
+name: Hata bildirimi / Bug report
+description: Bir şey beklendiği gibi çalışmıyor / Something does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Günlükleri eklemeden önce Wi-Fi adınızı, IP adreslerinizi, seri numaranızı ve parolaları silin.
+        Remove Wi-Fi names, IP addresses, serial numbers and passwords from logs before attaching them.
+        **Güvenlik açıklarını burada bildirmeyin / Do not report security issues here** → SECURITY.md
+  - type: dropdown
+    id: component
+    attributes:
+      label: Bileşen / Component
+      options:
+        - USB kurulum paketi / install package
+        - kobra-screen (ekran / touchscreen UI)
+        - ACE Pro sürücüsü / driver
+        - LeviQ3 / Z-offset
+        - ace-standalone
+        - tools/ace-fw
+        - Diğer / Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Ne oldu, ne bekliyordunuz? / What happened, what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Yeniden üretme adımları / Steps to reproduce
+  - type: input
+    id: versions
+    attributes:
+      label: Sürümler / Versions
+      description: open-kobra, Kobra 3 firmware, Rinkhals, vanilla-klipper, ACE Pro firmware
+      placeholder: "open-kobra 0.3.0, firmware 2.4.6.7, Rinkhals 20261101_01, vanilla-klipper 0.3, ACE V1.3.863"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Günlükler / Logs
+      description: "USB'deki aGVscF9zb3Nf/open-kobra-install.log, Klipper / Moonraker günlükleri"
+      render: text

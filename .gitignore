@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+open-kobra/dist/
+kobra-screen/preview/
+kobra-screen/fonts/AlibabaSans-Regular.ttf
+*.swu
+.env*

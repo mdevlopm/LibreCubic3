@@ -1,0 +1,36 @@
+{
+    "$version": "1",
+    "name": "ACE Pro Paneli",
+    "description": "Yazıcısız (bağımsız) ACE Pro kurutma ve kontrol web paneli. Klipper/gklib ACE'yi kullanmıyorken çalıştırın.",
+    "version": "0.3.0",
+    "requirements": {
+        "cpu": 0,
+        "memory": 20
+    },
+    "properties": {
+        "serial_port": {
+            "display": "Seri port",
+            "type": "enum",
+            "options": ["auto", "/dev/ttyACM0", "/dev/ttyACM1", "/dev/ttyACM2"],
+            "default": "auto"
+        },
+        "http_port": {
+            "display": "HTTP portu",
+            "type": "number",
+            "range": [1024, 65535],
+            "default": 8890
+        },
+        "bind_host": {
+            "display": "Dinleme adresi",
+            "type": "enum",
+            "options": ["127.0.0.1", "0.0.0.0"],
+            "default": "127.0.0.1"
+        },
+        "max_temp": {
+            "display": "Sıcaklık üst sınırı (°C)",
+            "type": "number",
+            "range": [1, 100],
+            "default": 55
+        }
+    }
+}
