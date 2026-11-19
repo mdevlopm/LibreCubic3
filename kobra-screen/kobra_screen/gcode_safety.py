@@ -1,5 +1,6 @@
 """G-code heating/extrusion safety guards, execution and emergency-stop mixin for ``App``."""
 
+import logging
 import re
 
 from . import wizards
@@ -236,8 +237,30 @@ class _AppGcodeMixin:
             self.pages = []
             self.tab = "home"
             self.dirty = True
-        self.do(lambda: self.client.print_start(path), self.tr("Baskı başlatıldı"))
+            bed_mesh, home_z = bool(self.print_bed_mesh), bool(self.print_home_z)
+            self.print_bed_mesh = self.print_home_z = True
+
+        def start():
+            self._send_print_options(bed_mesh, home_z)
+            self.client.print_start(path)
+        self.do(start, self.tr("Baskı başlatıldı"))
         return True
+
+    def _send_print_options(self, bed_mesh, home_z):
+        """Set the G9111 start options; skipped when the macro lacks them, never blocks the print."""
+        try:
+            status = self.client.query({"gcode_macro G9111": None}).get("gcode_macro G9111") or {}
+        except Exception as exc:  # noqa: BLE001 - an option failure must not stop the print
+            logging.warning("print options: query failed: %s", exc)
+            return
+        lines = ["SET_GCODE_VARIABLE MACRO=G9111 VARIABLE=%s VALUE=%d" % (name, int(value))
+                 for name, value in (("bed_mesh", bed_mesh), ("home_z", home_z)) if name in status]
+        if not lines:
+            return
+        try:
+            self.client.gcode("\n".join(lines), timeout=10)
+        except Exception as exc:  # noqa: BLE001
+            logging.warning("print options: could not set %s: %s", lines, exc)
 
     def resume_print(self):
         if getattr(self, "extrusion_lock", False):
@@ -311,6 +334,33 @@ class _AppGcodeMixin:
             lambda: self.start_wizard("level"), "primary", yes_label="Başlat")
         return True
 
+    def cancel_print(self):
+        """Cancel the print on its own thread so a queued long call cannot hold it back.
+
+        When Klipper is stuck in a long blocking command the cancel request
+        times out; then offer the emergency stop, which bypasses the G-code
+        queue. It is never sent without the user's confirmation.
+        """
+        def on_error(msg):
+            if "timed out" in msg.lower() or "zaman aşımı" in msg.lower():
+                self.confirm(
+                    self.tr(
+                        "Klipper meşgul, iptal hemen çalışmadı.\n\nAcil durdurma yapılsın mı? "
+                        "Yazıcı hemen durur, ısıtıcılar kapanır."
+                    ),
+                    lambda: self.do(self.client.emergency_stop, self.tr("Acil durdurma gönderildi"), urgent=True),
+                    kind="danger",
+                    yes_label="Evet, durdur",
+                    no_label="Bekle",
+                    is_estop=True,
+                )
+            else:
+                self.notify(self.tr_error(msg))
+        self.do(self.client.print_cancel, self.tr("Baskı iptal ediliyor"), on_error=on_error, urgent=True)
+
+    def pause_print(self):
+        self.do(self.client.print_pause, urgent=True)
+
     def request_emergency_stop(self):
         with self._lock:
             if isinstance(self.modal, Confirm) and self.modal.is_estop:
@@ -320,7 +370,7 @@ class _AppGcodeMixin:
                 "Acil durdurma yapılsın mı?\n\nYazıcı hemen durur, ısıtıcılar kapanır. "
                 "Devam etmek için Klipper yeniden başlatılmalıdır."
             ),
-            lambda: self.do(self.client.emergency_stop, self.tr("Acil durdurma gönderildi")),
+            lambda: self.do(self.client.emergency_stop, self.tr("Acil durdurma gönderildi"), urgent=True),
             kind="danger",
             yes_label="Evet, durdur",
             no_label="Vazgeç",

@@ -8,7 +8,7 @@ import threading
 import math
 import time
 
-from . import bed_mesh, beeper, i18n, limits, prompts, screens, touch_cal, tracker, wizards
+from . import bed_mesh, beeper, i18n, limits, prompts, screens, sysinfo, touch_cal, tracker, wizards
 from .app_ace import _AppAceMixin
 from .app_models import (
     ACE_FEED_STEPS, ACE_INFO_DEDUPE_SEC, ACE_RESULT_WAIT_SEC, ACE_STOP_BACKUP_SEC, ACE_STOP_COMMANDS,
@@ -142,6 +142,8 @@ class App(_AppSettingsMixin, _AppSpoolsMixin, _AppPollingMixin, _AppAceMixin,
         self.content_bottom = 0
         self.dirty = True
         self.display_brightness = 100
+        self.print_bed_mesh = True  # print start options (G9111 bed_mesh / home_z), reset after each start
+        self.print_home_z = True
         self.display_sleep_sec = 0
         self.display_sleep_on_print = True
         self.display_asleep = False
@@ -182,6 +184,9 @@ class App(_AppSettingsMixin, _AppSpoolsMixin, _AppPollingMixin, _AppAceMixin,
         self._temp_store_supported = True
         self._temp_update_interval = 5.0
         self._last_temp_store_poll = 0.0
+        self.sysinfo = None  # Tools → System status sample (kobra_screen.sysinfo)
+        self._sysinfo_sampler = sysinfo.SysInfoSampler(clock=self._clock)
+        self._last_sysinfo_poll = 0.0
         self._gcode_store_interval = GCODE_STORE_POLL_SEC
         self._last_gcode_store_poll = -1e9
         self._last_temp_store_data = None
@@ -426,6 +431,8 @@ class App(_AppSettingsMixin, _AppSpoolsMixin, _AppPollingMixin, _AppAceMixin,
             self.run_async(self._sync_temperature_store)
         elif page == "bed_mesh":
             self.run_async(self.refresh_bed_mesh)
+        elif page == "sysinfo":
+            self.run_async(self.refresh_sysinfo)
 
     def back(self):
         with self._lock:
@@ -453,6 +460,22 @@ class App(_AppSettingsMixin, _AppSpoolsMixin, _AppPollingMixin, _AppAceMixin,
             self.bed_mesh_tilt = bed_mesh.clamp_tilt(tilt)
             if final:
                 self.dirty = True
+
+    def refresh_sysinfo(self):
+        """Sample host CPU/memory, process shares and MCU load for the System status page."""
+        try:
+            proc = self.client.proc_stats()
+        except MoonrakerError:
+            proc = None
+        try:
+            objects = self.client.query(dict(sysinfo.QUERY))
+        except MoonrakerError:
+            objects = None
+        info = self._sysinfo_sampler.sample(proc, objects)
+        with self._lock:
+            self.sysinfo = info
+            self._last_sysinfo_poll = self._clock()
+            self.dirty = True
 
     def refresh_bed_mesh(self):
         """Fetch latest Klipper bed_mesh status and stock printer_mutable.cfg."""

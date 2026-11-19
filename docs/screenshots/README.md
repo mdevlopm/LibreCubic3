@@ -112,90 +112,94 @@ All screens on one sheet: [sheet.png](sheet.png)
 
 ![Bed mesh re-measure confirmation](27-bed-mesh-remeasure.png)
 
-### 28. Cold pull wizard: heating
+### 28. Tools: system status
 
-![Cold pull wizard: heating](28-cold-pull-heating.png)
+![Tools: system status](28-system-status.png)
 
-### 29. Cold pull wizard: cooling
+### 29. Cold pull wizard: heating
 
-![Cold pull wizard: cooling](29-cold-pull-cooling.png)
+![Cold pull wizard: heating](29-cold-pull-heating.png)
 
-### 30. Settings
+### 30. Cold pull wizard: cooling
 
-![Settings](30-settings.png)
+![Cold pull wizard: cooling](30-cold-pull-cooling.png)
 
-### 31. Display
+### 31. Settings
 
-![Display](31-display.png)
+![Settings](31-settings.png)
 
-### 32. Sound alerts
+### 32. Display
 
-![Sound alerts](32-sound.png)
+![Display](32-display.png)
 
-### 33. Updates
+### 33. Sound alerts
 
-![Updates](33-updates.png)
+![Sound alerts](33-sound.png)
 
-### 34. System
+### 34. Updates
 
-![System](34-system.png)
+![Updates](34-updates.png)
 
-### 35. Language
+### 35. System
 
-![Language](35-language.png)
+![System](35-system.png)
 
-### 36. Touch calibration
+### 36. Language
 
-![Touch calibration](36-touch-cal-intro.png)
+![Language](36-language.png)
 
-### 37. Touch calibration: corner targets
+### 37. Touch calibration
 
-![Touch calibration: corner targets](37-touch-cal-corner.png)
+![Touch calibration](37-touch-cal-intro.png)
 
-### 38. Touch calibration: verification
+### 38. Touch calibration: corner targets
 
-![Touch calibration: verification](38-touch-cal-verify.png)
+![Touch calibration: corner targets](38-touch-cal-corner.png)
 
-### 39. Touch calibration: confirm
+### 39. Touch calibration: verification
 
-![Touch calibration: confirm](39-touch-cal-confirm.png)
+![Touch calibration: verification](39-touch-cal-verify.png)
 
-### 40. Wi-Fi networks
+### 40. Touch calibration: confirm
 
-![Wi-Fi networks](40-wifi.png)
+![Touch calibration: confirm](40-touch-cal-confirm.png)
 
-### 41. Keyboard
+### 41. Wi-Fi networks
 
-![Keyboard](41-keyboard.png)
+![Wi-Fi networks](41-wifi.png)
 
-### 42. Wi-Fi network details
+### 42. Keyboard
 
-![Wi-Fi network details](42-wifi-network.png)
+![Keyboard](42-keyboard.png)
 
-### 43. Limits: temperatures
+### 43. Wi-Fi network details
 
-![Limits: temperatures](43-limits-1.png)
+![Wi-Fi network details](43-wifi-network.png)
 
-### 44. Limits: motion and LeviQ3
+### 44. Limits: temperatures
 
-![Limits: motion and LeviQ3](44-limits-2.png)
+![Limits: temperatures](44-limits-1.png)
 
-### 45. Limits: nozzle heater check
+### 45. Limits: motion and LeviQ3
 
-![Limits: nozzle heater check](45-limits-3.png)
+![Limits: motion and LeviQ3](45-limits-2.png)
 
-### 46. Limits: bed heater check
+### 46. Limits: nozzle heater check
 
-![Limits: bed heater check](46-limits-4.png)
+![Limits: nozzle heater check](46-limits-3.png)
 
-### 47. Limits: ACE heating and feed
+### 47. Limits: bed heater check
 
-![Limits: ACE heating and feed](47-limits-5.png)
+![Limits: bed heater check](47-limits-4.png)
 
-### 48. Limits: ACE sensors
+### 48. Limits: ACE heating and feed
 
-![Limits: ACE sensors](48-limits-6.png)
+![Limits: ACE heating and feed](48-limits-5.png)
 
-### 49. Emergency stop confirmation
+### 49. Limits: ACE sensors
 
-![Emergency stop confirmation](49-emergency-stop.png)
+![Limits: ACE sensors](49-limits-6.png)
+
+### 50. Emergency stop confirmation
+
+![Emergency stop confirmation](50-emergency-stop.png)

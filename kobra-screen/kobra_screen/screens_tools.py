@@ -1,12 +1,12 @@
 """Tools grid, limits, wizard, events, maintenance and updates pages."""
 
 from . import i18n, limits, tracker, wizards
-from .screens_common import EVENTS_PER_PAGE, _format_date, blank, section
+from .screens_common import EVENTS_PER_PAGE, _format_date, blank, duration, section
 from .widgets import Bar, Button, Card, Col, Icon, Label, Ring, Row, Rule, Spacer
 
 
 def tools(app):
-    """Twelve equal tiles in two columns; one text size for all so labels line up and never wrap."""
+    """Equal tiles in two columns; one text size for all so labels line up and never wrap."""
     order = ("cold_pull", "clean", "load", "unload", "level", "zoffset", "pid", "shaper")
     locked = bool(app.heating_lock)
     tiles = []
@@ -31,6 +31,10 @@ def tools(app):
                         icon="warning" if due else "heal", align="left", size="small"))
     tiles.append(Button(app.tr("Tabla haritası"), lambda: app.open("bed_mesh"), "card", icon="level",
                         align="left", size="small"))
+    tiles.append(Button(app.tr("Sistem izleme"), lambda: app.open("sysinfo"), "card", icon="chart",
+                        align="left", size="small"))
+    if len(tiles) % 2:
+        tiles.append(Spacer())  # keep an odd last tile the same width as the others
     tool_rows = [Row(46, tiles[i:i + 2]) for i in range(0, len(tiles), 2)]
     return [Card(tool_rows, color="bg", border=None, radius=0, pad=0, gap=5)]
 
@@ -419,3 +423,46 @@ def updates_page(app, arg):
 
     rows.append(Row(44, [Button(app.tr("Yenile"), lambda: app.run_async(app.refresh_updates), icon="refresh", align="left")]))
     return rows
+
+
+def sysinfo_page(app, arg):
+    """Host CPU/memory, process shares and MCU load (kobra_screen.sysinfo); refreshed every 2 s while open."""
+    info = app.sysinfo
+    if not info:
+        return [Card([Row(60, [Label(app.tr("Okunuyor..."), color="muted", align="center")])], pad=12)]
+
+    def pct(value):
+        return "-" if value is None else "%.0f%%" % value
+
+    def line(title, value, color="text"):
+        return Row(19, [Label(title, size="small", color="muted", weight=1.0),
+                        Label(value, size="small", color=color, align="right", weight=1.2)])
+
+    mem = "-"
+    if info.get("mem_total_kb"):
+        used, total = info["mem_used_kb"] or 0, info["mem_total_kb"]
+        mem = "%.0f / %.0f MB · %.0f%%" % (used / 1024.0, total / 1024.0, used * 100.0 / total)
+    cpu = info.get("cpu")
+    host = Card([
+        section(app.tr("Yazıcı bilgisayarı")),
+        line(app.tr("İşlemci"), pct(cpu), "warn" if cpu is not None and cpu >= 85 else "text"),
+        line(app.tr("Bellek"), mem),
+        line(app.tr("Çalışma süresi"), duration(info["uptime"], app.lang) if info.get("uptime") else "-"),
+    ], pad=8, gap=3)
+
+    screen_rss = info.get("screen_rss_kb")
+    procs = Card([
+        section(app.tr("İşlemci payı")),
+        line(app.tr("Ekran"), pct(info.get("screen_cpu"))
+             + ("" if screen_rss is None else " · %.0f MB" % (screen_rss / 1024.0))),
+        line("Klipper", pct(info.get("klipper_cpu"))),
+        line("Moonraker", pct(info.get("moonraker_cpu"))),
+    ], pad=8, gap=3)
+
+    mcu_rows = [section(app.tr("MCU yükü"))]
+    for mcu in info.get("mcus") or ():
+        errors = mcu["retransmit"] + mcu["invalid"]
+        mcu_rows.append(line(app.tr(mcu["label"]), "%s · %.1f ms · %s %d" % (
+            pct(mcu["load"]), mcu["rtt_ms"], app.tr("hata"), errors)))
+    mcu_rows.append(Row(18, [Label(app.tr("Sıcaklık: kartların yazılımı desteklemiyor"), size="tab", color="tertiary")]))
+    return [Card([host, procs, Card(mcu_rows, pad=8, gap=3)], color="bg", border=None, radius=0, pad=0, gap=5)]

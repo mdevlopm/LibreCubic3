@@ -344,7 +344,7 @@ def dry_presets_page(app, arg):
 def filament(app):
     if not app.ace_connected:
         ext = app.spool_info("external")
-        rem_txt = ("%.0f g · %.1f m" % (ext["remaining_g"], ext["remaining_m"])) if ext["configured"] else app.tr("Ayarlanmadı")
+        rem_txt = ("%.1f g · %.1f m" % (ext["remaining_g"], ext["remaining_m"])) if ext["configured"] else app.tr("Ayarlanmadı")
         rem_col = "danger_text" if ext["low"] else ("text" if ext["configured"] else "muted")
         rows = [_ace_disconnected_card(app)]
         ext_rows = [
@@ -469,7 +469,7 @@ def spool_page(app, target):
     title_txt = app.tr("Harici makara") if key == "external" else (app.tr("Yuva %d") % (int(key) + 1))
 
     if sp["configured"]:
-        rem_txt = "%.0f g · %.1f m" % (sp["remaining_g"], sp["remaining_m"])
+        rem_txt = "%.1f g · %.1f m" % (sp["remaining_g"], sp["remaining_m"])
         init_txt = "%.0f g · %.1f m" % (sp["initial_g"], sp["initial_m"])
     else:
         rem_txt = app.tr("Ayarlanmadı")

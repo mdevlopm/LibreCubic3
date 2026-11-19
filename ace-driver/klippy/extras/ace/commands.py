@@ -1430,6 +1430,10 @@ def cmd_ACE_HANDLE_PRINT_END(gcmd):
         gcmd.respond_info("ACE: Global ACE Pro support disabled - print_end handler does nothing")
         return
 
+    if manager.is_ace_absent():
+        gcmd.respond_info("ACE: No ACE connected - external spool mode, print_end handler does nothing")
+        return
+
     manager.runout_monitor.runout_detection_active = False
     logging.info("ACE: Runout detection disabled for print end")
 
@@ -1503,6 +1507,13 @@ def cmd_ACE_CHANGE_TOOL(manager, gcmd, tool_index):
     """Handle tool change command."""
     if not manager.get_ace_global_enabled():
         gcmd.respond_info("ACE: Global ACE Pro support disabled - tool change ignored")
+        return
+
+    manager.wait_for_ace_detection()
+    if manager.is_ace_absent():
+        gcmd.respond_info(
+            f"ACE: No ACE connected - external spool mode, T{tool_index} ignored"
+        )
         return
 
     printer = get_printer()

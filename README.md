@@ -8,8 +8,9 @@
 
 | Component | Purpose |
 |---|---|
-| **kobra-screen** | A new touchscreen UI for mainline Klipper + Moonraker (English / Turkish): printing, temperatures, axes, files, ACE Pro slots and drying, Wi-Fi, wizards (Z-offset measurement, nozzle cleaning, cold pull, PID, input shaper). Installed **disabled**. |
-| **ACE Pro driver** | Klipper driver for the ACE Pro: load/unload, drying, RFID, tangle protection. Based on [Kobra-S1/ACEPRO](https://github.com/Kobra-S1/ACEPRO) with fixes for USB disconnects, drying and error handling. |
+| **kobra-screen** | A new touchscreen UI for mainline Klipper + Moonraker (English / Turkish): printing (with bed mesh and Z probe on/off per print), temperatures, axes, files, ACE Pro slots and drying, Wi-Fi, wizards (Z-offset measurement, nozzle cleaning, cold pull, PID, input shaper), system status (CPU, memory, MCU load). Installed **disabled**. |
+| **ACE Pro driver** | Klipper driver for the ACE Pro: load/unload, drying, RFID, tangle protection. Based on [Kobra-S1/ACEPRO](https://github.com/Kobra-S1/ACEPRO) with fixes for USB disconnects, drying and error handling. With no ACE plugged in, the printer prints from an external spool like stock (tool changes are skipped, the normal runout sensor is used). |
+| **Print start and motion** | Stock Kobra 3 Y travel limit (260 mm) and X driver interpolation, a nozzle wipe that first probes the bed next to the wiper, purging only over the purge chute, retraction before the nozzle moves over the bed, and a shorter purge line. |
 | **LeviQ3** | A mainline Klipper re-implementation of the stock firmware's automatic Z-offset (nozzle contact) and bed leveling commands. |
 | **numpy** | numpy built for the printer's CPU and C library, so Klipper's resonance measurement (`SHAPER_CALIBRATE`) works on the printer itself. |
 | **Boot guard** | If a Rinkhals or Klipper update deletes the LeviQ3 files, restores them at boot; if it cannot, it makes sure Klipper still starts. |
@@ -36,7 +37,7 @@ The package never writes to Anycubic's stock files; it only adds files to the Ri
     <td><img src="docs/screenshots/07-control-heat.png" width="180" alt="Temperatures"></td>
     <td><img src="docs/screenshots/25-bed-mesh.png" width="180" alt="Bed mesh"></td>
     <td><img src="docs/screenshots/20-tools.png" width="180" alt="Tools"></td>
-    <td><img src="docs/screenshots/30-settings.png" width="180" alt="Settings"></td>
+    <td><img src="docs/screenshots/31-settings.png" width="180" alt="Settings"></td>
   </tr>
   <tr>
     <td align="center">Temperatures</td>
@@ -46,7 +47,7 @@ The package never writes to Anycubic's stock files; it only adds files to the Ri
   </tr>
 </table>
 
-**All 49 screens, one per page:** [docs/screenshots](docs/screenshots/README.md) · **everything on one sheet:** [sheet.png](docs/screenshots/sheet.png)
+**All 50 screens, one per page:** [docs/screenshots](docs/screenshots/README.md) · **everything on one sheet:** [sheet.png](docs/screenshots/sheet.png)
 
 ## Requirements
 
@@ -63,7 +64,7 @@ The package never writes to Anycubic's stock files; it only adds files to the Ri
 
 **Optional:**
 
-- **ACE Pro.** Everything else works without it. ACE Pro 2 has not been tested.
+- **ACE Pro.** Everything else works without it; with no ACE connected the printer uses an external spool automatically. ACE Pro 2 has not been tested.
 
 **Not needed:** SSH, ADB, Docker, software on your computer, internet access during installation.
 

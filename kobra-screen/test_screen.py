@@ -216,7 +216,7 @@ class ScreenTests(unittest.TestCase):
         self.press("PETG")
         self.assertIn("Elinde 30 cm kadar PETG filament olsun.", " ".join(self.texts()).replace("\n", " "))
         self.press("İleri")
-        self.assertEqual(self.printer.gcodes[-1], "M104 S240")
+        self.assertEqual(self.printer.gcodes[-1], "_OK_PARK_PURGE\nM104 S240")
         self.assertFalse(self.enabled("İleri"))  # still cold
         self.ticks(40)
         self.press("İleri", "10 mm sür")
@@ -230,7 +230,7 @@ class ScreenTests(unittest.TestCase):
         self.press("İleri")
         self.assertEqual(self.printer.status["extruder"]["target"], 0.0)
         self.press("Tekrarla")  # dirty tip: heat again
-        self.assertEqual(self.printer.gcodes[-1], "M104 S240")
+        self.assertEqual(self.printer.gcodes[-1], "_OK_PARK_PURGE\nM104 S240")
         self.assertIn("Adım 3 / 7", self.texts())
 
     def test_wizard_cancel_turns_heat_off_and_blocks_tabs(self):
@@ -1213,7 +1213,7 @@ class StrictFakeLvgl:
                 "_pointer", "_parent", "_children", "_callbacks", "_styles", "_flags",
                 "_pos", "_size_wh", "_text", "_range", "_value", "_src", "_valid_png", "_scale",
                 "_box_w", "_box_h", "_size", "_font_size", "_align", "unit_label",
-                "text_label", "sub_label", "glyph", "r_glyph", "display_text", "display_sub",
+                "text_label", "sub_label", "glyph", "r_glyph", "display_text", "display_sub", "fit_size",
                 "dot", "halo", "rim", "hole", "tab_bar", "toggle_track", "toggle_knob",
                 "_side", "_loaded_path", "_mesh_key", "_angles", "_rotation", "_long_mode", "_series",
                 "_chart_type", "_point_count", "_div_lines", "_axis_ranges",

@@ -189,6 +189,7 @@ class AceSerialManager:
 
         self._reconnect_timestamps = []      # List of monotonic times of reconnect attempts
         self._last_connected_time = 0.0      # Monotonic time of last successful connect
+        self._missing_reported = False       # "No ACE device found" already shown on console
         self._counter_reset_time = 0.0       # Time when counter was last reset
         self._reconnect_backoff = 5.0        # Current backoff delay (increases on failure)
         self.RECONNECT_BACKOFF_MIN = 5.0     # Minimum backoff delay
@@ -534,10 +535,14 @@ class AceSerialManager:
                 else:
                     self._reconnect_backoff = next_backoff
                 recent_count = len(self._reconnect_timestamps)
-                self.gcode.respond_info(
+                retry_msg = (
                     f'ACE[{self.instance_num}]: Retry in {current_backoff:.0f}s '
                     f'({recent_count} attempts in last {int(self.INSTABILITY_WINDOW)}s)'
                 )
+                if self._missing_reported:
+                    logging.info(retry_msg)
+                else:
+                    self.gcode.respond_info(retry_msg)
                 return eventtime + current_backoff
 
         initial_delay = delay if delay is not None else self._reconnect_backoff
@@ -607,10 +612,14 @@ class AceSerialManager:
                 else:
                     self._reconnect_backoff = next_backoff
                 recent_count = len(self._reconnect_timestamps)
-                self.gcode.respond_info(
+                retry_msg = (
                     f'ACE[{self.instance_num}]: Retry in {current_backoff:.0f}s '
                     f'({recent_count} attempts in last {int(self.INSTABILITY_WINDOW)}s)'
                 )
+                if self._missing_reported:
+                    logging.info(retry_msg)
+                else:
+                    self.gcode.respond_info(retry_msg)
                 return eventtime + current_backoff
 
         self.gcode.respond_info(
@@ -643,7 +652,14 @@ class AceSerialManager:
         transport = self.protocol.get_transport_spec()
         port = self.find_connection_port(instance)
         if port is None:
-            self.gcode.respond_info(f'ACE[{instance}]: No ACE device found')
+            # Say it once on the console; repeats every few seconds go to klippy.log only
+            if not self._missing_reported:
+                self._missing_reported = True
+                self.gcode.respond_info(
+                    f'ACE[{instance}]: No ACE device found - will keep checking quietly'
+                )
+            else:
+                logging.info(f'ACE[{instance}]: No ACE device found')
             return False
 
         self._port = port
@@ -824,6 +840,7 @@ class AceSerialManager:
 
                 # Record connection time for stability grace period tracking
                 self._last_connected_time = self.reactor.monotonic()
+                self._missing_reported = False
 
                 # Clear supervision counters on successful connection
                 self._comm_timeout_timestamps = []

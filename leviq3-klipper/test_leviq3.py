@@ -617,6 +617,13 @@ class LeviQ3Tests(unittest.TestCase):
         self.assertAlmostEqual(printer.objects['toolhead'].kin.rails[2].position_endstop,
                                -0.1, places=6)
         self.assertAlmostEqual(printer.world_z_at_gcode_zero(), before_world, places=6)
+        # The cool-down to extru_end_temp runs with the part fan on, probing with it off
+        wipe = log.index("MY_WIPE")
+        fan_on = log.index("M106 S255", wipe)
+        cooled = log.index("M109 S140.000000", wipe)
+        fan_off = log.index("M107", cooled)
+        self.assertLess(fan_on, cooled)
+        self.assertLess(fan_off, log.index("G28 Z", wipe))
 
     def test_leviq_preserves_measured_and_temp_offset_and_three_step_flow(self):
         printer = self.printer(wipe_gcode='MY_WIPE', mesh_gcode='MY_MESH')

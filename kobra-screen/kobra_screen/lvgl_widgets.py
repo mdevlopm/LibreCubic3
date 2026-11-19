@@ -364,10 +364,12 @@ class _LvglWidgetsMixin:
                     button.text_label = self._text(button, (bx, top + 18, bw, 22), main_size, widget.align,
                                                    clip=True)
                     button.display_text, button.display_sub = main_text, sub_text
+                    button.fit_size = main_size
                 else:
                     size, text = button_label(item)
                     button.text_label = self._text(button, (bx, by, bw, bh), size, widget.align, clip=True)
                     button.display_text, button.display_sub = text, widget.sub
+                    button.fit_size = size
             if centre and widget.dot is not None:
                 radius = button_dot_radius(item)
                 cx, cy = centre[0] - item.x, centre[1] - item.y
@@ -561,6 +563,31 @@ class _LvglWidgetsMixin:
                 obj.set_style_border_width(button_border_width(widget) if border else 0, pressed)
                 if border:
                     obj.set_style_border_color(color(border), pressed)
+
+    @staticmethod
+    def _refit_button_text(obj, item):
+        """Recompute the cut/fitted text of a reused button for its new text.
+
+        display_text/display_sub are fitted when the button is created; a
+        reused button (same shape, new text, e.g. the next page of a list)
+        must not keep showing the old fitted text. Returns False when the new
+        text needs a different font size than the label was created with.
+        """
+        if getattr(obj, "text_label", None) is None:
+            return True
+        widget = item.widget
+        if widget.sub:
+            _, box = button_parts(item)
+            if not box:
+                return True
+            size, main_text, sub_text = button_sub_label(item, box[2])
+        else:
+            size, main_text = button_label(item)
+            sub_text = widget.sub
+        if size != getattr(obj, "fit_size", size):
+            return False
+        obj.display_text, obj.display_sub = main_text, sub_text
+        return True
 
     def _update(self, obj, widget):
         lv = _lv()
@@ -835,6 +862,10 @@ class _LvglWidgetsMixin:
         for idx, (obj, item) in enumerate(zip(self.objects, placed)):
             wkey = self._widget_key(item.widget)
             if wkey != widget_keys[idx]:
+                if isinstance(item.widget, Button) and not self._refit_button_text(obj, item):
+                    # The new text needs another font size: rebuild instead of patching
+                    self.shape = None
+                    return self.sync(placed)
                 self._update(obj, item.widget)
                 widget_keys[idx] = wkey
         self._sync_overlays()

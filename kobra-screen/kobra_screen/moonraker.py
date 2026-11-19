@@ -232,6 +232,9 @@ class Moonraker:
         flag = "true" if include_monitors else "false"
         return self._request("GET", "/server/temperature_store?include_monitors=" + flag)
 
+    def proc_stats(self):
+        return self._request("GET", "/machine/proc_stats")
+
     def gcode_store(self, count=100):
         return self._request("GET", "/server/gcode_store?count=%d" % int(count))
 

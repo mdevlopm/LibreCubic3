@@ -171,13 +171,13 @@ class ButtonLabelTests(unittest.TestCase):
 
 
 class ToolsGridTests(AppCase):
-    def test_twelve_equal_tiles_one_size_in_both_languages(self):
+    def test_equal_tiles_one_size_in_both_languages(self):
         for lang in ("tr", "en"):
             app = self.make_app(lang=lang, rinkhals_home=os.path.join(self.tmp.name, lang))
             app.refresh()
             app.select_tab("tools")
             tiles = [i for i in app.layout() if isinstance(i.widget, Button) and i.widget.size == "small"]
-            self.assertEqual(len(tiles), 12, lang)
+            self.assertEqual(len(tiles), 13, lang)
             self.assertLessEqual(max(t.w for t in tiles) - min(t.w for t in tiles), 1, lang)
             self.assertEqual({t.h for t in tiles}, {46})
             self.assertTrue(all(t.widget.right_icon is None for t in tiles))

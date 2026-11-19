@@ -301,6 +301,11 @@ class _AppPollingMixin:
                         or (self._clock() - self._last_gcode_store_poll >= self._gcode_store_interval - 0.1)
                     )
                 )
+                try_sysinfo = (
+                    self.state.connected
+                    and bool(self.pages) and self.pages[-1][0] == "sysinfo"
+                    and self._clock() - self._last_sysinfo_poll >= 2.0
+                )
                 filename = self.get("print_stats", "filename", "")
                 should_load_meta = bool(
                     self.state.connected
@@ -320,6 +325,8 @@ class _AppPollingMixin:
                     self.refresh_maintenance_totals()
                 if should_load_meta:
                     self.load_metadata(filename)
+                if try_sysinfo:
+                    self.refresh_sysinfo()
             finally:
                 self._secondary_lock.release()
 

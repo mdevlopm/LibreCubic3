@@ -526,11 +526,14 @@ class FakeConfig:
         return default
 
 
-def make_manager(overrides=None, print_state="standby", save_file=None):
+def make_manager(overrides=None, print_state="standby", save_file=None, ace_present=True):
     """Build a real AceManager on fake Klipper objects (no ACE needed).
 
     ``save_file``: path of a saved_variables.cfg; when given, the printer uses
     the faithful Klipper save_variables model instead of the plain dict.
+    ``ace_present``: most tests model a plugged-in ACE whose serial link is
+    not opened; keep external spool mode off for them. Pass False to test
+    the real no-ACE detection.
     """
     import ace.config as ace_config_mod
     ace_config_mod.ACE_INSTANCES.clear()
@@ -546,6 +549,8 @@ def make_manager(overrides=None, print_state="standby", save_file=None):
     base = {"moonraker_lane_sync_enabled": False}
     base.update(overrides or {})
     manager = AceManager(FakeConfig(printer, base))
+    if ace_present:
+        manager.is_ace_absent = lambda: False
     return printer, manager
 
 

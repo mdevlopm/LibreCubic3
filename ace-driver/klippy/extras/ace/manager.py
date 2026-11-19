@@ -274,6 +274,8 @@ class AceManager:
         Sets up toolhead reference, connects ACE instances, initializes sensors, starts monitoring.
         """
 
+        self._ready_time = self.reactor.monotonic()
+
         # Set toolhead on all instances
         toolhead = self.printer.lookup_object("toolhead")
         for instance in self.instances:
@@ -682,6 +684,60 @@ class AceManager:
         """Get global ACE Pro enabled state from persistent storage."""
         return bool(self.state.get("ace_global_enabled", True))
 
+    # An ACE that dropped out this long ago while no print is running counts
+    # as unplugged; a drop during a print keeps the pause/recovery path.
+    ACE_ABSENT_AFTER_S = 120.0
+    # After Klipper start the ACE needs a few seconds to enumerate and connect.
+    ACE_STARTUP_GRACE_S = 20.0
+
+    def is_ace_connected(self):
+        """True if any ACE instance has a live serial connection."""
+        for instance in self.instances:
+            serial_mgr = getattr(instance, "serial_mgr", None)
+            try:
+                if serial_mgr is not None and serial_mgr.is_connected():
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def wait_for_ace_detection(self):
+        """Block (reactor-friendly) until an ACE connects or the startup grace ends."""
+        ready = getattr(self, "_ready_time", None)
+        if ready is None or not self._ace_pro_enabled:
+            return
+        deadline = ready + self.ACE_STARTUP_GRACE_S
+        while not self.is_ace_connected():
+            now = self.reactor.monotonic()
+            if now >= deadline:
+                return
+            self.reactor.pause(min(deadline, now + 0.5))
+
+    def is_ace_absent(self):
+        """True when ACE support is on but no ACE is plugged in (external spool mode).
+
+        Absent means: not connected now and either never connected since
+        Klipper started (after a short startup grace), or last connected more
+        than ACE_ABSENT_AFTER_S ago while idle. During a print the mode decided
+        while idle is kept, so an ACE dropping out mid-print still takes the
+        pause/recovery path and an unplugged one stays in external spool mode.
+        T<n>, print-end unload and ACE runout handling are skipped in this mode
+        so a printer without an ACE works like stock.
+        """
+        if not self._ace_pro_enabled or self.is_ace_connected():
+            return False
+        last_seen = 0.0
+        for instance in self.instances:
+            serial_mgr = getattr(instance, "serial_mgr", None)
+            last_seen = max(last_seen, float(getattr(serial_mgr, "_last_connected_time", 0.0) or 0.0))
+        now = self.reactor.monotonic()
+        if last_seen <= 0.0:
+            ready = getattr(self, "_ready_time", None)
+            return ready is None or (now - ready) >= self.ACE_STARTUP_GRACE_S
+        if self._print_state() in ("printing", "paused"):
+            return bool(getattr(self, "_external_spool_mode", False))
+        return (now - last_seen) > self.ACE_ABSENT_AFTER_S
+
     def _print_state(self):
         """Lower-case print_stats state ("" if unavailable)."""
         try:
@@ -946,6 +1002,8 @@ class AceManager:
                     "ace_endless_spool_match_mode", "exact"
                 ),
                 "ace_pro_enabled": bool(self._ace_pro_enabled),
+                "ace_connected": self.is_ace_connected(),
+                "external_spool_mode": self.is_ace_absent(),
                 "toolhead_sensor": toolhead_sensor,
                 "rdm_sensor": rdm_sensor,
                 "tangle_protection": self.get_tangle_protection(),

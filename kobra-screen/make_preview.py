@@ -116,6 +116,14 @@ def render_sheet(lang, out_path, pages_dir=None):
         press("Yeniden ölç"); shot()                             # re-measure heats the bed: confirmation first
         press("Vazgeç")
         app.back()
+        app.refresh_sysinfo = lambda: None                       # the fake Moonraker has no proc_stats
+        app.sysinfo = {"cpu": 41.0, "uptime": 9645, "cpu_temp": None, "mem_total_kb": 217876, "mem_used_kb": 111580,
+                       "screen_cpu": 9.6, "screen_rss_kb": 36572, "klipper_cpu": 5.2, "moonraker_cpu": 14.8,
+                       "moonraker_mem": "51000 kB",
+                       "mcus": [{"label": "Ana kart", "load": 1.0, "rtt_ms": 1.0, "retransmit": 9, "invalid": 0},
+                                {"label": "Nozul kartı", "load": 0.9, "rtt_ms": 1.2, "retransmit": 9, "invalid": 0}]}
+        press("Sistem izleme"); shot()                           # tools: system status
+        app.back()
         printer.status["extruder"]["target"] = 0.0
         ticks(40)
         press("Cold pull", "PLA", "İleri"); ticks(9); shot()     # wizard: heating

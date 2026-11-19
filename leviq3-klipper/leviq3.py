@@ -540,14 +540,20 @@ class LeviQ3:
                     heater.min_extrude_temp = orig_min
                 heater.can_extrude = orig_can
 
+    def _cool_to_end_temp(self):
+        # The part fan speeds up the wait for extru_end_temp from ~2-5 min to
+        # well under a minute; probing itself runs with the fan off (M107).
+        self._run("M106 S255")
+        self._run("M109 S%f" % (self.extru_end_temp,))
+        self._run("M107")
+
     cmd_LEVIQ_AUTO_ZOFFSET_help = "Calculates the z_offset automatically"
     def cmd_LEVIQ_AUTO_ZOFFSET(self, gcmd):
         is_save = gcmd.get_int('IS_SAVE', 1)
         retries = gcmd.get_int('RETRY_COUNT', self.retry_count)
         orig = self._get_zoffset()
         orig_comp = self.temp_comp
-        self._run("M109 S%f" % (self.extru_end_temp,))
-        self._run("M107")
+        self._cool_to_end_temp()
         self._run("M83")
         try:
             self._run("G92 E0")
@@ -582,8 +588,7 @@ class LeviQ3:
                 self._run("M109 S%f" % (self.extru_temp,))
                 if self.rewipe_gcode:
                     self._run(self.rewipe_gcode)
-                self._run("M109 S%f" % (self.extru_end_temp,))
-                self._run("M107")
+                self._cool_to_end_temp()
                 if not self._measure_pair(gcmd, orig, orig_comp)[0]:
                     self._restore_orig(orig, orig_comp)
                     calibrated = False
@@ -681,9 +686,8 @@ class LeviQ3:
                 self._run(self.wipe_gcode)
             self._run("M400")
             self._run("BED_MESH_CLEAR")
-            self._run("M109 S%f" % (self.extru_end_temp,))
+            self._cool_to_end_temp()
             self._run("M190 S%f" % (self.bed_temp,))
-            self._run("M107")
             self._run("G28 Z")
             self._run("M400")
             self._run("G4 P1000")

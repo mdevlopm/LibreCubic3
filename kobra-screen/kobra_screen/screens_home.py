@@ -115,10 +115,10 @@ def home(app):
         ace_row = _active_ace_row(app)
         if ace_row is not None:
             card_rows.append(ace_row)
-        stop = Button(app.tr("Durdur"), lambda: app.confirm(app.tr("Baskı iptal edilsin mi?"), lambda: app.do(app.client.print_cancel),
+        stop = Button(app.tr("Durdur"), lambda: app.confirm(app.tr("Baskı iptal edilsin mi?"), app.cancel_print,
                                                             "danger"), "danger", icon="stop", align="left")
         if state == "printing":
-            first = Button(app.tr("Duraklat"), lambda: app.do(app.client.print_pause), "normal", icon="pause", align="left")
+            first = Button(app.tr("Duraklat"), app.pause_print, "normal", icon="pause", align="left")
         else:
             ext_locked = bool(getattr(app, "extrusion_lock", False))
             first = Button(

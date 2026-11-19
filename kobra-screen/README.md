@@ -27,6 +27,7 @@ Normally it is installed by the open-kobra USB package (see the [main README](..
 | `kobra_screen/app_models.py` | Shared constants, data classes (`Keypad`, `Confirm`, `Keyboard`, `TouchCalibration`, `State`) and `disable_rinkhals_app` |
 | `kobra_screen/app_settings.py`, `app_spools.py`, `app_polling.py`, `app_ace.py`, `app_system.py`, `gcode_safety.py`, `app_touch_cal.py` | `App` mixins: settings/power/events/beeper, maintenance/updates/spools, Moonraker polling/cache, ACE Pro state, limits/system/Wi-Fi, G-code safety locks, touch calibration |
 | `kobra_screen/screens.py` and `screens_*.py` | The 5 main tabs (`TABS`) and sub-pages (`PAGES`): home/control/temperatures, files/history/bed mesh, ACE/drying/spools, tools/limits/events/maintenance/updates, settings/system/Wi-Fi/calibration, modal dialogs |
+| `kobra_screen/sysinfo.py` | Tools → System status: host CPU/memory (Moonraker `proc_stats`), CPU share of the screen, Klipper and Moonraker, MCU load |
 | `kobra_screen/limits.py` | `open_kobra_limits.cfg` parser/writer and safety validation |
 | `kobra_screen/wizards.py` | Step-by-step wizards (cold pull, load/unload, nozzle cleaning, LeviQ, Z-offset, PID, input shaper) |
 | `kobra_screen/widgets.py` | 272×480 layout engine and widgets (`Row`, `Col`, `Card`, `Button`, `Label`, `Bar`, `Ring`, `Picture`) |

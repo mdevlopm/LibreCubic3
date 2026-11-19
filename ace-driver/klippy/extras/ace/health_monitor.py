@@ -61,6 +61,31 @@ class ConnectionHealthMonitor:
             )
             mgr._ace_pro_enabled = True
 
+    def update_external_spool_mode(self):
+        """Hand the runout sensor back to Klipper while no ACE is plugged in.
+
+        With ACE support enabled the driver turns off the standard
+        filament_switch_sensor pause and does runout itself. Without an ACE
+        connected that would leave an external spool with no runout
+        protection, so the standard sensors are restored until an ACE shows up.
+        """
+        mgr = self.manager
+        if mgr._shutdown_in_progress or mgr._printer_is_shutdown():
+            return
+        absent = bool(mgr._ace_pro_enabled and mgr.is_ace_absent())
+        prev = getattr(mgr, "_external_spool_mode", None)
+        if prev == absent:
+            return
+        mgr._external_spool_mode = absent
+        if absent:
+            mgr._restore_sensors()
+            mgr.gcode.respond_info(
+                "ACE: No ACE connected - external spool mode, standard runout sensor active"
+            )
+        elif prev and mgr._ace_pro_enabled:
+            mgr._disable_all_sensor_detection()
+            mgr.gcode.respond_info("ACE: ACE connected - ACE runout monitoring active")
+
     def _monitor_ace_state(self, eventtime):
         """
         Monitor ACE Pro enable/disable state and connection health (2 second interval).
@@ -74,10 +99,12 @@ class ConnectionHealthMonitor:
         mgr = self.manager
         try:
             mgr.update_ace_support_active_state()
+            self.update_external_spool_mode()
             mgr._monitor_transport_reconnects()
 
             # Check connection health for all instances (if supervision enabled)
-            if mgr._ace_pro_enabled and mgr._connection_supervision_enabled:
+            if (mgr._ace_pro_enabled and mgr._connection_supervision_enabled
+                    and not getattr(mgr, "_external_spool_mode", False)):
                 mgr._check_connection_health(eventtime)
 
             # Safety net: flush deferred state to disk when not printing.

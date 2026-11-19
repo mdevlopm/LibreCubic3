@@ -87,7 +87,7 @@ def file(app, path):
         do_start()
 
     rows = [
-        Card([Row(104 if warn_info else 112, [Spacer(0.25), visual, Spacer(0.25)])],
+        Card([Row(64 if warn_info else 72, [Spacer(0.25), visual, Spacer(0.25)])],
              color="sunken", border="border_subtle", radius=12, pad=8),
         Card([
             Row(28, [Label(path, size="normal", align="center")]),
@@ -108,12 +108,25 @@ def file(app, path):
             Icon("warning", "small", "warn", weight=0.2),
             Label(app.tr("Filament yetersiz: kalan %.0f g") % sp["remaining_g"], size="small", color="warn", weight=1.8),
         ])], color="surface2", border="warn", pad=6, gap=0))
-    else:
-        rows.append(Row(8, [Spacer()]))
+    rows.append(print_options(app))
     locked = bool(app.heating_lock)
     rows.append(Row(48, [Button(app.tr("Yazdır"), app.when(app.idle and not locked, start), "primary",
                                 icon="lock" if locked else "play")]))
     return rows
+
+
+def print_options(app):
+    """Start options sent to the G9111 start macro: bed mesh and clean-nozzle Z home (both on by default)."""
+    def flip(name):
+        setattr(app, name, not getattr(app, name))
+        app.dirty = True
+
+    return Row(44, [
+        Button(app.tr("Bed mesh"), lambda: flip("print_bed_mesh"), "card", align="left",
+               toggle=bool(app.print_bed_mesh)),
+        Button(app.tr("Z ölçümü"), lambda: flip("print_home_z"), "card", align="left",
+               toggle=bool(app.print_home_z)),
+    ])
 
 
 def _history_status(status, lang=i18n.DEFAULT_LANG):

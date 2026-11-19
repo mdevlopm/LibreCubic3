@@ -48,7 +48,7 @@ SLOT_COLOR_NAMES = {
 }
 PAGE_TITLES = {"files": "Dosyalar", "file": "Baskı", "tune": "Baskı ayarı", "slot": "Yuva",
                "slot_detail": "Yuva ayrıntısı", "ace": "ACE Pro", "dry_presets": "Kurutma önayarları",
-               "heat_chart": "Sıcaklık grafiği", "bed_mesh": "Tabla haritası",
+               "heat_chart": "Sıcaklık grafiği", "bed_mesh": "Tabla haritası", "sysinfo": "Sistem durumu",
                "limits": "Sınırlar", "wifi": "Wi-Fi", "wifi_net": "Wi-Fi ağı", "language": "Dil / Language",
                "history": "Baskı geçmişi", "history_detail": "Baskı ayrıntısı",
                "events": "Olay geçmişi", "maintenance": "Bakım", "updates": "Güncelleme", "system": "Sistem",

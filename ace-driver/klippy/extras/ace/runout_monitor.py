@@ -168,6 +168,11 @@ class RunoutMonitor:
         Returns:
             float: Next callback time (eventtime + interval)
         """
+        # No ACE plugged in: the standard runout sensor handles the external spool
+        is_absent = getattr(self.manager, "is_ace_absent", None)
+        if callable(is_absent) and is_absent():
+            return eventtime + 1.0
+
         # Get current state
         print_stats = self.printer.lookup_object("print_stats", None)
         is_printing = False

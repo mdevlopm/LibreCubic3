@@ -35,7 +35,7 @@ from .screens_settings import (  # noqa: F401
     system_page, touch_calibration_view, wifi_net_page, wifi_page,
 )
 from .screens_tools import (  # noqa: F401
-    _event_source_label, _event_style, events_page, limits_page, maintenance_page, tools,
+    _event_source_label, _event_style, events_page, limits_page, maintenance_page, sysinfo_page, tools,
     updates_page, wizard,
 )
 
@@ -43,7 +43,7 @@ TABS = {"home": home, "control": control, "filament": filament, "tools": tools, 
 
 PAGES = {"files": files, "file": file, "tune": tune, "slot": slot, "slot_detail": slot_detail,
          "ace": ace_page, "dry_presets": dry_presets_page, "heat_chart": heat_chart_page,
-         "bed_mesh": bed_mesh_page, "limits": limits_page,
+         "bed_mesh": bed_mesh_page, "limits": limits_page, "sysinfo": sysinfo_page,
          "wifi": wifi_page, "wifi_net": wifi_net_page,
          "language": language_page, "history": history_page, "history_detail": history_detail_page,
          "events": events_page, "maintenance": maintenance_page, "updates": updates_page, "system": system_page,
