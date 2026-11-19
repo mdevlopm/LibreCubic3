@@ -13,6 +13,6 @@ Build (Fedora host, needs `qemu-user-static-arm` and podman):
    `podman run --rm --platform linux/arm/v7 -v <work>:/w:Z ghcr.io/jbatonnet/armv7-uclibc:rinkhals sh /w/build2.sh`
 3. Wheel lands in `<work>/out/`. `check.py` is a quick sanity test (FFT, libm, FP flags).
 
-The open-kobra USB package ships this wheel (`open-kobra/vendor/`) and installs it into
+The LibreCubic3 USB package ships this wheel (`open-kobra/vendor/`) and installs it into
 the vanilla-klipper app's `site-packages` automatically. A vanilla-klipper app reinstall
-or Rinkhals update replaces that folder; run the open-kobra package again afterwards.
+or Rinkhals update replaces that folder; run the LibreCubic3 package again afterwards.

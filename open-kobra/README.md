@@ -1,4 +1,4 @@
-# open-kobra — Kobra 3 USB install package
+# LibreCubic3 — Kobra 3 USB install package
 
 Builds, installs and uninstalls `kobra-screen`, `ace-standalone`, the ACE Pro driver, `leviq3`, numpy and the boot guard (`05-open-kobra-guard`) as a single Rinkhals SWU package for the Anycubic Kobra 3 (+ ACE Pro) running **Rinkhals** + **vanilla-klipper** + **Moonraker**.
 
@@ -103,7 +103,7 @@ To enable one:
 1. Delete the old `aGVscF9zb3Nf` folder from the stick.
 2. Copy `dist/uninstall/aGVscF9zb3Nf` to the root of the stick.
 3. Insert it and wait for the second beep.
-4. The uninstaller first makes a safety backup (`open-kobra-pre-uninstall-<date>`, including `ace-standalone/config.json` and `*.config`), stops running open-kobra apps, **first removes the `# open-kobra/begin ... # open-kobra/end` block from `printer.klipper.cfg`**, then removes `leviq3.py`, `leviq3.cfg`, `leviq3_state.json`, `open_kobra_homing.cfg`, `open_kobra_limits.cfg`, `/useremain/home/rinkhals/open-kobra`, `.open-kobra-version`, the open-kobra numpy (only if it installed it) and the `kobra-screen`, `ace-standalone`, `05-open-kobra-guard` apps. It **does not delete or roll back `printer.klipper.cfg`**, so `SAVE_CONFIG` results (Z-offset, bed mesh, PID) and your manual edits stay. The log is written to `aGVscF9zb3Nf/open-kobra-uninstall.log`.
+4. The uninstaller first makes a safety backup (`open-kobra-pre-uninstall-<date>`, including `ace-standalone/config.json` and `*.config`), stops running LibreCubic3 apps, **first removes the `# open-kobra/begin ... # open-kobra/end` block from `printer.klipper.cfg`**, then removes `leviq3.py`, `leviq3.cfg`, `leviq3_state.json`, `open_kobra_homing.cfg`, `open_kobra_limits.cfg`, `/useremain/home/rinkhals/open-kobra`, `.open-kobra-version`, the numpy it installed (only if it installed it) and the `kobra-screen`, `ace-standalone`, `05-open-kobra-guard` apps. It **does not delete or roll back `printer.klipper.cfg`**, so `SAVE_CONFIG` results (Z-offset, bed mesh, PID) and your manual edits stay. The log is written to `aGVscF9zb3Nf/open-kobra-uninstall.log`.
 
 ## Recovery
 

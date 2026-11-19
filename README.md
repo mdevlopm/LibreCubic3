@@ -1,6 +1,8 @@
-# open-kobra
+# LibreCubic3
 
 **A Rinkhals add-on package for the Anycubic Kobra 3 + ACE Pro.** It installs from a USB stick: no SSH, no tools on your computer, no cables.
+
+On the printer and in this repository's folders the package keeps its internal name `open-kobra` (folders, app names, log files), so existing installs upgrade cleanly.
 
 > ⚠️ **Experimental software.** Tested on a single Kobra 3 only. It makes persistent changes to your printer (an uninstall package is provided). No warranty of any kind; use at your own risk.
 
@@ -82,9 +84,9 @@ The printer reads one `update.swu` per USB insertion, so installation takes two 
 
 Details: [vanilla-klipper installation guide](https://github.com/Kobra-S1/vanilla-klipper-swu/blob/main/vanilla-klipper.md).
 
-### 2. Install open-kobra
+### 2. Install LibreCubic3
 
-1. Download **`open-kobra-<version>-install.zip`** from [Releases](../../releases).
+1. Download **`LibreCubic3-<version>-install.zip`** from [Releases](../../releases).
 2. Delete the old `aGVscF9zb3Nf` folder from the USB stick, then unzip the file to the **root** of the stick. It must contain `aGVscF9zb3Nf/update.swu`.
 3. Insert the USB stick while the printer is on.
    - **1 beep:** installation started.
@@ -95,12 +97,12 @@ Details: [vanilla-klipper installation guide](https://github.com/Kobra-S1/vanill
 
 To update, repeat step 2 with the new version's zip. Your settings are kept.
 
-> After updating Rinkhals or the vanilla-klipper app, install open-kobra once more: those updates reset Klipper's extension folder. The boot guard restores LeviQ3, but the ACE driver and numpy need a reinstall.
+> After updating Rinkhals or the vanilla-klipper app, install LibreCubic3 once more: those updates reset Klipper's extension folder. The boot guard restores LeviQ3, but the ACE driver and numpy need a reinstall.
 
 ## Uninstalling
 
 1. Delete the old `aGVscF9zb3Nf` folder from the USB stick.
-2. Unzip **`open-kobra-<version>-uninstall.zip`** to the root of the stick, insert it and wait for the second beep.
+2. Unzip **`LibreCubic3-<version>-uninstall.zip`** to the root of the stick, insert it and wait for the second beep.
 
 Uninstalling does not delete your `printer.klipper.cfg`; saved settings such as Z-offset, bed mesh and PID stay.
 

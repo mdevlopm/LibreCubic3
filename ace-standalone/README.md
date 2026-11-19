@@ -1,6 +1,6 @@
 # ace-standalone
 
-Runs an Anycubic ACE Pro (Gen 1, JSON protocol) without a printer, from a web panel: start/stop drying, chamber temperature, slots, feed/retract filament. Needs only the Python standard library (Linux). On the printer it is installed as a Rinkhals app by the open-kobra package (disabled by default).
+Runs an Anycubic ACE Pro (Gen 1, JSON protocol) without a printer, from a web panel: start/stop drying, chamber temperature, slots, feed/retract filament. Needs only the Python standard library (Linux). On the printer it is installed as a Rinkhals app by the LibreCubic3 package (disabled by default).
 
 ## Running
 

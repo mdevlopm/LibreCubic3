@@ -2,7 +2,7 @@
 
 A Moonraker-based touchscreen UI for the Anycubic Kobra 3 (272×480 portrait touchscreen) and the ACE Pro. On the printer it runs as a Rinkhals app (`app.sh` + `app.json`); on a development computer the same screen tree is rendered to pixel-exact PNG previews with Pillow and exercised by unit tests.
 
-Normally it is installed by the open-kobra USB package (see the [main README](../README.md)) and enabled under **Settings → Rinkhals → Manage apps**.
+Normally it is installed by the LibreCubic3 USB package (see the [main README](../README.md)) and enabled under **Settings → Rinkhals → Manage apps**.
 
 ## Runtime architecture (Kobra 3 / Rinkhals)
 
