@@ -3,7 +3,7 @@
 import logging
 import re
 
-from . import wizards
+from . import tool_map, wizards
 from .app_models import Confirm, HEATING_COMMANDS
 from .moonraker import MoonrakerError
 
@@ -233,18 +233,46 @@ class _AppGcodeMixin:
         if self.heating_lock:
             self.notify(self.tr("Isıtma kilidi açık"))
             return False
+        plan = self.print_tool_plan(path)
+        missing = tool_map.unresolved(plan)
+        if missing:
+            self.notify(self._tool_missing_text(missing[0]))
+            return False
         with self._lock:
             self.pages = []
             self.tab = "home"
             self.dirty = True
             bed_mesh, home_z = bool(self.print_bed_mesh), bool(self.print_home_z)
             self.print_bed_mesh = self.print_home_z = True
+            self.print_tool_overrides, self.print_tool_overrides_path = {}, None
 
         def start():
             self._send_print_options(bed_mesh, home_z)
+            self._send_tool_map(path, plan)
             self.client.print_start(path)
         self.do(start, self.tr("Baskı başlatıldı"))
         return True
+
+    def _tool_missing_text(self, entry):
+        return self.tr("ACE: T%d (%s) için dolu yuva yok") % (entry["tool"], entry["material"] or "?")
+
+    def _send_tool_map(self, path, plan):
+        """Send the file tool -> ACE slot map before the print. Raises (the print is not started) when a tool
+        has no loaded slot or the map cannot be set, so the print never waits on an empty slot."""
+        if plan is None and self.ace_connected:
+            try:
+                plan = self.print_tool_plan(path, meta=self.client.metadata(path) or {})
+            except MoonrakerError as exc:
+                logging.warning("tool map: metadata failed: %s", exc)
+        if plan is None:
+            return  # no ACE: external spool, the driver skips T<n>
+        missing = tool_map.unresolved(plan)
+        if missing:
+            raise MoonrakerError(self._tool_missing_text(missing[0]))
+        try:
+            self.client.gcode(tool_map.map_command(plan), timeout=10)
+        except MoonrakerError as exc:
+            raise MoonrakerError(self.tr("ACE yuva eşleştirmesi gönderilemedi: %s") % exc)
 
     def _send_print_options(self, bed_mesh, home_z):
         """Set the G9111 start options; skipped when the macro lacks them, never blocks the print."""

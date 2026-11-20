@@ -478,7 +478,7 @@ version() {
             return 0
         fi
     fi
-    printf '0.3.2\n'
+    printf '0.3.3\n'
 }
 
 case "${1:-}" in

@@ -2,6 +2,7 @@
 
 from collections import deque
 
+from . import tool_map
 from .app_models import ACE_RESULT_WAIT_SEC, ACE_STOP_BACKUP_SEC
 
 
@@ -164,6 +165,33 @@ class _AppAceMixin:
         if "ACE_DISABLE_FEED_ASSIST" in upper:
             return "assist"
         return None
+
+    def print_tool_plan(self, path, meta=None):
+        """File tool -> ACE slot plan for a print (kobra_screen.tool_map), or None without a connected ACE
+        or before the file's metadata is known."""
+        if not self.ace_connected:
+            return None
+        meta = meta if meta is not None else self.meta.get(path)
+        if not meta:
+            return None
+        overrides = self.print_tool_overrides if self.print_tool_overrides_path == path else {}
+        current = self.get("ace_state", "current_index", -1)
+        return tool_map.plan(meta, self.ace_slots, current_tool=current, overrides=overrides)
+
+    def set_print_tool_override(self, path, tool, slot):
+        with self._lock:
+            if self.print_tool_overrides_path != path:
+                self.print_tool_overrides, self.print_tool_overrides_path = {}, path
+            if slot is None:
+                self.print_tool_overrides.pop(tool, None)
+            else:
+                self.print_tool_overrides[tool] = slot
+            self.dirty = True
+
+    def clear_print_tool_overrides(self):
+        with self._lock:
+            self.print_tool_overrides, self.print_tool_overrides_path = {}, None
+            self.dirty = True
 
     def ace_data(self):
         with self._lock:

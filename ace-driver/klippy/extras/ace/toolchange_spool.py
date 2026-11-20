@@ -195,7 +195,8 @@ class ToolchangeSpoolHelper:
             )
 
             # Show Mainsail dialog prompt
-            mgr._show_spool_not_ready_prompt(target_tool, instance_num, local_slot, inventory_status, ace_status)
+            mgr._show_spool_not_ready_prompt(target_tool, instance_num, local_slot, inventory_status, ace_status,
+                                             timeout_s=timeout_s)
 
         start_time = mgr.reactor.monotonic()
         ready_start_time = None  # Time when it first became ready
@@ -260,7 +261,8 @@ class ToolchangeSpoolHelper:
             # Wait before next check
             mgr.reactor.pause(mgr.reactor.monotonic() + check_interval_s)
 
-    def _show_spool_not_ready_prompt(self, tool_index, instance_num, local_slot, inventory_status, ace_status):
+    def _show_spool_not_ready_prompt(self, tool_index, instance_num, local_slot, inventory_status, ace_status,
+                                     timeout_s=None):
         """
         Show Mainsail prompt when spool is not ready.
 
@@ -277,10 +279,12 @@ class ToolchangeSpoolHelper:
         )
 
         prompt_text = (
-            f"Spool not ready! ACE {instance_num}, Slot {local_slot} (Tool T{tool_index}) - "
+            f"Spool not ready! ACE {instance_num}, Slot {local_slot + 1} (Tool T{tool_index}) - "
             f"Status: inventory={inventory_status}, ACE={ace_status} - "
-            f"Please reload the spool on ACE {instance_num}, slot {local_slot}. "
-            f"The system will automatically continue when the spool is detected and stable."
+            f"Please reload the spool on ACE {instance_num}, slot {local_slot + 1}. "
+            + (f"Waiting {timeout_s:.0f}s for the spool, then the tool change stops."
+               if timeout_s is not None and timeout_s < 60 else
+               "The system will automatically continue when the spool is detected and stable.")
         )
 
         mgr.gcode.run_script_from_command(

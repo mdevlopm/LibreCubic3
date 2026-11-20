@@ -738,6 +738,43 @@ class AceManager:
             return bool(getattr(self, "_external_spool_mode", False))
         return (now - last_seen) > self.ACE_ABSENT_AFTER_S
 
+    # A tool map set while idle (the screen sends it just before starting a
+    # print) is dropped if no print picks it up within this time.
+    TOOL_MAP_PENDING_S = 300.0
+
+    def set_tool_map(self, mapping):
+        """Route file tools to physical ACE tools for the next print ({file_tool: tool}).
+
+        The map lives for one print: it becomes active when a print runs and is
+        cleared when that print ends, is cancelled or never starts.
+        """
+        self._tool_map = {int(k): int(v) for k, v in dict(mapping or {}).items()}
+        self._tool_map_set_time = self.reactor.monotonic()
+        self._tool_map_active = False
+
+    def clear_tool_map(self):
+        self._tool_map = {}
+        self._tool_map_active = False
+
+    def get_tool_map(self):
+        return dict(getattr(self, "_tool_map", None) or {})
+
+    def update_tool_map_lifecycle(self):
+        """Activate the map when a print runs; clear it when the print is over (2 s health tick)."""
+        if not getattr(self, "_tool_map", None):
+            return
+        if self._print_state() in ("printing", "paused"):
+            self._tool_map_active = True
+        elif self._tool_map_active:
+            self.clear_tool_map()
+        elif self.reactor.monotonic() - self._tool_map_set_time > self.TOOL_MAP_PENDING_S:
+            self.clear_tool_map()
+
+    def map_tool(self, tool_index):
+        """Physical tool for a file tool (unchanged when no map entry exists)."""
+        self.update_tool_map_lifecycle()
+        return self.get_tool_map().get(tool_index, tool_index)
+
     def _print_state(self):
         """Lower-case print_stats state ("" if unavailable)."""
         try:
@@ -1004,6 +1041,7 @@ class AceManager:
                 "ace_pro_enabled": bool(self._ace_pro_enabled),
                 "ace_connected": self.is_ace_connected(),
                 "external_spool_mode": self.is_ace_absent(),
+                "tool_map": {str(k): v for k, v in self.get_tool_map().items()},
                 "toolhead_sensor": toolhead_sensor,
                 "rdm_sensor": rdm_sensor,
                 "tangle_protection": self.get_tangle_protection(),
@@ -1178,10 +1216,11 @@ class AceManager:
             stable_ready_s=stable_ready_s,
         )
 
-    def _show_spool_not_ready_prompt(self, tool_index, instance_num, local_slot, inventory_status, ace_status):
+    def _show_spool_not_ready_prompt(self, tool_index, instance_num, local_slot, inventory_status, ace_status,
+                                     timeout_s=None):
         """Show Mainsail prompt when spool is not ready."""
         return self._toolchange_spool._show_spool_not_ready_prompt(
-            tool_index, instance_num, local_slot, inventory_status, ace_status
+            tool_index, instance_num, local_slot, inventory_status, ace_status, timeout_s=timeout_s
         )
 
     def set_and_save_variable(self, varname, value):

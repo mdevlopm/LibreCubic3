@@ -21,6 +21,7 @@ from .screens_common import (  # noqa: F401
 )
 from .screens_files import (  # noqa: F401
     _history_status, bed_mesh_badge, bed_mesh_page, file, files, history_detail_page, history_page,
+    tool_map_page,
 )
 from .screens_home import (  # noqa: F401
     TemperatureScreen, control, control_extra, control_heat, control_move, heat_chart_page,
@@ -43,7 +44,7 @@ TABS = {"home": home, "control": control, "filament": filament, "tools": tools, 
 
 PAGES = {"files": files, "file": file, "tune": tune, "slot": slot, "slot_detail": slot_detail,
          "ace": ace_page, "dry_presets": dry_presets_page, "heat_chart": heat_chart_page,
-         "bed_mesh": bed_mesh_page, "limits": limits_page, "sysinfo": sysinfo_page,
+         "bed_mesh": bed_mesh_page, "limits": limits_page, "sysinfo": sysinfo_page, "tool_map": tool_map_page,
          "wifi": wifi_page, "wifi_net": wifi_net_page,
          "language": language_page, "history": history_page, "history_detail": history_detail_page,
          "events": events_page, "maintenance": maintenance_page, "updates": updates_page, "system": system_page,

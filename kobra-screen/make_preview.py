@@ -52,6 +52,8 @@ def render_sheet(lang, out_path, pages_dir=None):
         shot()                                                   # home, idle
         press("Yazdır"); shot()                                  # files
         press("kutu_08.gcode"); shot()                           # file details
+        app.open("tool_map", "kutu_08.gcode"); shot()            # ACE slot mapping
+        app.back()
         printer.status["extruder"]["target"] = 210.0
         printer.status["heater_bed"]["target"] = 60.0
         ticks(12)

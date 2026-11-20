@@ -160,7 +160,7 @@ class ExtrusionGuardTests(unittest.TestCase):
     def test_ace_change_tool_no_positive_e_moves(self):
         self.build()
         # Mock spool ready & toolhead sensor
-        self.manager.check_and_wait_for_spool_ready = lambda tool: True
+        self.manager.check_and_wait_for_spool_ready = lambda tool, **kw: True
         self.manager.sensors = {}
 
         # Mock feed to toolhead assist so it completes without hardware
@@ -186,7 +186,7 @@ class ExtrusionGuardTests(unittest.TestCase):
 
     def test_ace_change_tool_positive_e_moves_allowed_when_true(self):
         self.build({"toolhead_extrusion_allowed": True})
-        self.manager.check_and_wait_for_spool_ready = lambda tool: True
+        self.manager.check_and_wait_for_spool_ready = lambda tool, **kw: True
         self.manager.sensors = {}
 
         self.ace.wait_ready = lambda: None
@@ -295,7 +295,7 @@ class ExtrusionGuardTests(unittest.TestCase):
         self.manager.get_switch_state = lambda sensor: (
             sensor_reads.pop(0) if sensor == SENSOR_TOOLHEAD and sensor_reads else (sensor == SENSOR_TOOLHEAD)
         )
-        self.manager.check_and_wait_for_spool_ready = lambda tool: True
+        self.manager.check_and_wait_for_spool_ready = lambda tool, **kw: True
 
         commands.cmd_ACE_CHANGE_TOOL(self.manager, FakeGcmd(self.gcode, {}), 0)
         self.assertEqual(speed_changes, [])

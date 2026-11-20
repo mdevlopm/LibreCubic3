@@ -144,6 +144,8 @@ class App(_AppSettingsMixin, _AppSpoolsMixin, _AppPollingMixin, _AppAceMixin,
         self.display_brightness = 100
         self.print_bed_mesh = True  # print start options (G9111 bed_mesh / home_z), reset after each start
         self.print_home_z = True
+        self.print_tool_overrides = {}  # file tool -> ACE tool picked by hand on the print screen
+        self.print_tool_overrides_path = None  # the file those choices belong to
         self.display_sleep_sec = 0
         self.display_sleep_on_print = True
         self.display_asleep = False

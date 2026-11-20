@@ -148,7 +148,8 @@ class FakePrinter:
             "output_pin nozzle_light": {"value": 0.0},
             "output_pin logo_light": {"value": 1.0},
         }
-        self.metadata = {"estimated_time": 5400, "layer_height": 0.2, "first_layer_height": 0.2, "object_height": 24.0,
+        self.metadata = {"referenced_tools": [0], "filament_type": "PLA", "filament_colors": ["#E03030"],
+                         "estimated_time": 5400, "layer_height": 0.2, "first_layer_height": 0.2, "object_height": 24.0,
                          "filament_total": 4210.0,
                          "thumbnails": [{"width": 32, "height": 32, "relative_path": ".thumbs/kutu-32x32.png"},
                                         {"width": 96, "height": 96, "relative_path": ".thumbs/kutu-96x96.png"}]}

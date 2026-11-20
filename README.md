@@ -10,8 +10,8 @@ On the printer and in this repository's folders the package keeps its internal n
 
 | Component | Purpose |
 |---|---|
-| **kobra-screen** | A new touchscreen UI for mainline Klipper + Moonraker (English / Turkish): printing (with bed mesh and Z probe on/off per print), temperatures, axes, files, ACE Pro slots and drying, Wi-Fi, wizards (Z-offset measurement, nozzle cleaning, cold pull, PID, input shaper), system status (CPU, memory, MCU load). Installed **disabled**. |
-| **ACE Pro driver** | Klipper driver for the ACE Pro: load/unload, drying, RFID, tangle protection. Based on [Kobra-S1/ACEPRO](https://github.com/Kobra-S1/ACEPRO) with fixes for USB disconnects, drying and error handling. With no ACE plugged in, the printer prints from an external spool like stock (tool changes are skipped, the normal runout sensor is used). |
+| **kobra-screen** | A new touchscreen UI for mainline Klipper + Moonraker (English / Turkish): printing (with bed mesh and Z probe on/off per print, and automatic ACE slot matching: each colour in the file goes to the loaded slot with the same material and the closest colour), temperatures, axes, files, ACE Pro slots and drying, Wi-Fi, wizards (Z-offset measurement, nozzle cleaning, cold pull, PID, input shaper), system status (CPU, memory, MCU load). Installed **disabled**. |
+| **ACE Pro driver** | Klipper driver for the ACE Pro: load/unload, drying, RFID, tangle protection, per-print tool-to-slot map (`ACE_SET_TOOL_MAP`). Based on [Kobra-S1/ACEPRO](https://github.com/Kobra-S1/ACEPRO) with fixes for USB disconnects, drying and error handling. With no ACE plugged in, the printer prints from an external spool like stock (tool changes are skipped, the normal runout sensor is used). |
 | **Print start and motion** | Stock Kobra 3 Y travel limit (260 mm) and X driver interpolation, a nozzle wipe that first probes the bed next to the wiper, purging only over the purge chute, retraction before the nozzle moves over the bed, and a shorter purge line. |
 | **LeviQ3** | A mainline Klipper re-implementation of the stock firmware's automatic Z-offset (nozzle contact) and bed leveling commands. |
 | **numpy** | numpy built for the printer's CPU and C library, so Klipper's resonance measurement (`SHAPER_CALIBRATE`) works on the printer itself. |
@@ -49,7 +49,7 @@ The package never writes to Anycubic's stock files; it only adds files to the Ri
   </tr>
 </table>
 
-**All 50 screens, one per page:** [docs/screenshots](docs/screenshots/README.md) · **everything on one sheet:** [sheet.png](docs/screenshots/sheet.png)
+**All 51 screens, one per page:** [docs/screenshots](docs/screenshots/README.md) · **everything on one sheet:** [sheet.png](docs/screenshots/sheet.png)
 
 ## Requirements
 

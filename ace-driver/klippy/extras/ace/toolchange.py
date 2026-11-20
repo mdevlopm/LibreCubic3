@@ -13,6 +13,10 @@ from .config import (
 )
 from .reporting import emit_error
 
+# How long a tool change waits for an empty or settling slot. The wait holds Klipper's
+# G-code queue (Stop/Pause from the screen queue behind it), so it stays short; after
+# it the print pauses with a Retry dialog instead of blocking for minutes.
+SPOOL_READY_WAIT_S = 15.0
 
 def toolchange_in_progress_guard(method):
     """
@@ -447,8 +451,11 @@ class ToolchangeOrchestrator:
 
         # ===== LOAD NEW TOOL =====
         if target_tool != -1:
-            if not mgr.check_and_wait_for_spool_ready(target_tool):
-                raise Exception(f"Tool {target_tool} is not ready. Please check the spool and try again.")
+            if not mgr.check_and_wait_for_spool_ready(target_tool, timeout_s=SPOOL_READY_WAIT_S):
+                raise Exception(
+                    f"Tool {target_tool} (slot {target_tool + 1}) has no filament ready. "
+                    f"Load the spool, then Retry."
+                )
 
             target_ace, target_slot = get_ace_instance_and_slot_for_tool(target_tool)
 

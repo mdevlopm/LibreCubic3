@@ -852,6 +852,17 @@ STRINGS = {
     "~Orta": "Fair",  # bed mesh rating ("Orta" alone is "Center" in the touch calibration)
     "Kötü": "Poor",
     "~Kapat": "Close",  # modal close button ("Kapat" alone is "Off" for heaters)
+    # ACE slot mapping (print screen)
+    'Yuva eşleştirme': 'Slot mapping',
+    'ACE: T%d (%s) için dolu yuva yok': 'ACE: no loaded slot for T%d (%s)',
+    'ACE yuva eşleştirmesi gönderilemedi: %s': 'ACE slot mapping could not be sent: %s',
+    'Yuva yok': 'No slot',
+    '%s: dolu yuva yok': '%s: no loaded slot',
+    '%d renk: Yuva %s': '%d colours: slot %s',
+    'Malzeme ve renge göre seçildi.': 'Picked by material and colour.',
+    'Değiştirmek için yuvaya dokun.': 'Tap a slot to change it.',
+    'Elle seçim var.': 'Changed by hand.',
+    'Otomatik': 'Auto',
 }
 
 ERROR_PATTERNS = (

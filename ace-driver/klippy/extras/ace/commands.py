@@ -26,6 +26,7 @@ from .config import (
     get_instance_from_tool,
     get_local_slot,
     OVERRIDABLE_PARAMS,
+    SLOTS_PER_ACE,
 )
 
 
@@ -1430,6 +1431,7 @@ def cmd_ACE_HANDLE_PRINT_END(gcmd):
         gcmd.respond_info("ACE: Global ACE Pro support disabled - print_end handler does nothing")
         return
 
+    manager.clear_tool_map()
     if manager.is_ace_absent():
         gcmd.respond_info("ACE: No ACE connected - external spool mode, print_end handler does nothing")
         return
@@ -1515,6 +1517,13 @@ def cmd_ACE_CHANGE_TOOL(manager, gcmd, tool_index):
             f"ACE: No ACE connected - external spool mode, T{tool_index} ignored"
         )
         return
+
+    requested_tool = tool_index  # the file's tool: Retry must go through the tool map again
+    if tool_index >= 0:
+        mapped = manager.map_tool(tool_index)
+        if mapped != tool_index:
+            gcmd.respond_info(f"ACE: T{tool_index} -> T{mapped} (slot {mapped + 1}, tool map)")
+            tool_index = mapped
 
     printer = get_printer()
 
@@ -1669,7 +1678,7 @@ def cmd_ACE_CHANGE_TOOL(manager, gcmd, tool_index):
                 )
 
                 gcode.run_script_from_command(
-                    f'RESPOND TYPE=command MSG="action:prompt_button Retry T{tool_index}|T{tool_index}|primary"'
+                    f'RESPOND TYPE=command MSG="action:prompt_button Retry T{requested_tool}|T{requested_tool}|primary"'
                 )
 
                 if getattr(manager, "toolhead_extrusion_allowed", False):
@@ -2098,6 +2107,39 @@ def cmd_ACE_GET_ENDLESS_SPOOL_MODE(gcmd):
         emit_error(gcmd, f"ACE_GET_ENDLESS_SPOOL_MODE error: {e}")
 
 
+def cmd_ACE_SET_TOOL_MAP(gcmd):
+    """Route the next print's file tools to ACE tools. MAP=0:3,1:2 or CLEAR=1 (no arguments: show)."""
+    try:
+        manager = ace_get_manager(0)
+        if gcmd.get_int("CLEAR", 0):
+            manager.clear_tool_map()
+            gcmd.respond_info("ACE: Tool map cleared")
+            return
+        raw = gcmd.get("MAP", None)
+        if raw is None:
+            current = manager.get_tool_map()
+            text = ", ".join(f"T{k}->T{v}" for k, v in sorted(current.items())) or "none"
+            gcmd.respond_info(f"ACE: Tool map: {text}")
+            return
+        tool_count = len(manager.instances) * SLOTS_PER_ACE
+        mapping = {}
+        for pair in raw.replace(" ", "").split(","):
+            if not pair:
+                continue
+            try:
+                src, dst = (int(x) for x in pair.split(":"))
+            except ValueError:
+                raise gcmd.error(f"Invalid MAP entry '{pair}' (expected FILE_TOOL:ACE_TOOL)")
+            if not (0 <= src < 64) or not (0 <= dst < tool_count):
+                raise gcmd.error(f"MAP entry '{pair}' out of range (ACE tools 0-{tool_count - 1})")
+            mapping[src] = dst
+        manager.set_tool_map(mapping)
+        text = ", ".join(f"T{k}->T{v}" for k, v in sorted(mapping.items())) or "none"
+        gcmd.respond_info(f"ACE: Tool map for the next print: {text}")
+    except Exception as e:
+        emit_error(gcmd, f"ACE_SET_TOOL_MAP error: {e}")
+
+
 def cmd_ACE_CHANGE_TOOL_WRAPPER(gcmd):
     """Change tool or unload. TOOL=<index> to change tool, or TOOL=-1 to unload."""
     try:
@@ -2457,6 +2499,8 @@ ACE_COMMANDS = [
      "Set endless spool match mode. MODE=exact|material|next"),
     ("ACE_GET_ENDLESS_SPOOL_MODE", cmd_ACE_GET_ENDLESS_SPOOL_MODE, "Query current match mode"),
     ("ACE_CHANGE_TOOL", cmd_ACE_CHANGE_TOOL_WRAPPER, "Change tool or unload. TOOL=<index> or TOOL=-1"),
+    ("ACE_SET_TOOL_MAP", cmd_ACE_SET_TOOL_MAP,
+     "Route the next print's file tools to ACE tools. MAP=0:3,1:2 or CLEAR=1"),
     ("ACE_SET_RETRACT_SPEED", cmd_ACE_SET_RETRACT_SPEED,
      "Command to update retract speed. T=<tool> or INSTANCE= INDEX=, SPEED="),
     ("ACE_SET_FEED_SPEED", cmd_ACE_SET_FEED_SPEED,

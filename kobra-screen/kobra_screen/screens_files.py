@@ -1,6 +1,6 @@
 """File browser, print confirmation, print history and bed-mesh screen builders."""
 
-from . import i18n
+from . import i18n, tool_map
 from .screens_common import (
     FILES_PER_PAGE, HISTORY_PER_PAGE, _format_date, _format_filament_mm, _format_size, duration, section,
     status_badge,
@@ -109,10 +109,73 @@ def file(app, path):
             Label(app.tr("Filament yetersiz: kalan %.0f g") % sp["remaining_g"], size="small", color="warn", weight=1.8),
         ])], color="surface2", border="warn", pad=6, gap=0))
     rows.append(print_options(app))
+    plan = app.print_tool_plan(path, meta=meta) if meta else None
+    if plan is not None:
+        rows.append(tool_map_row(app, path, plan))
     locked = bool(app.heating_lock)
-    rows.append(Row(48, [Button(app.tr("Yazdır"), app.when(app.idle and not locked, start), "primary",
+    can_start = app.idle and not locked and not tool_map.unresolved(plan)
+    rows.append(Row(48, [Button(app.tr("Yazdır"), app.when(can_start, start), "primary",
                                 icon="lock" if locked else "play")]))
     return rows
+
+
+def _tool_text(entry, sep=" "):
+    return "T%d%s%s" % (entry["tool"], sep, entry["material"]) if entry["material"] else "T%d" % entry["tool"]
+
+
+def _slot_text(app, entry):
+    if entry["slot"] is None:
+        return app.tr("Yuva yok")
+    text = app.tr("Yuva %d") % (entry["slot"] + 1)
+    return "%s · %s" % (text, entry["slot_material"]) if entry["slot_material"] else text
+
+
+def tool_map_row(app, path, plan):
+    """ACE slot choice on the print screen: one line, tap for the per-tool page."""
+    missing = tool_map.unresolved(plan)
+    if missing:
+        e = missing[0]
+        return Row(44, [Button(app.tr("%s: dolu yuva yok") % _tool_text(e),
+                               lambda: app.open("tool_map", path), "outline_danger", icon="warning",
+                               align="left", right_icon="next")])
+    if len(plan) == 1:
+        e = plan[0]
+        text = "%s > %s" % (_tool_text(e), _slot_text(app, e))
+        dot = e["slot_rgb"] or (0, 0, 0)
+    else:
+        slots = ", ".join(str(e["slot"] + 1) for e in plan)
+        text = app.tr("%d renk: Yuva %s") % (len(plan), slots)
+        dot = plan[0]["slot_rgb"] or (0, 0, 0)
+    kind = "outline_danger" if any(e["match"] == "other" for e in plan) else "card"
+    return Row(44, [Button(text, lambda: app.open("tool_map", path), kind, dot=dot, align="left",
+                           right_icon="next")])
+
+
+def tool_map_page(app, path):
+    """Per-tool ACE slot choice: tap a slot to move to the next loaded one; Auto drops the manual picks."""
+    meta = app.meta.get(path) or {}
+    plan = app.print_tool_plan(path, meta=meta) if meta else None
+    if plan is None:
+        return [Card([Row(60, [Label(app.tr("ACE Pro bağlı değil"), color="muted", align="center")])], pad=12)]
+    slots = app.ace_slots
+    rows = []
+    for e in plan:
+        def change(tool=e["tool"]):
+            app.set_print_tool_override(path, tool, tool_map.next_slot(app.print_tool_plan(path) or plan,
+                                                                      tool, app.ace_slots))
+        kind = "outline_danger" if e["match"] in ("other", "none") else "card"
+        rows.append(Row(44, [
+            Button("T%d" % e["tool"], None, "ghost", dot=e["rgb"] or (0, 0, 0), sub=e["material"],
+                   align="left", weight=0.65),
+            Button(_slot_text(app, e), app.when(bool(tool_map.loaded_slots(slots)), change), kind,
+                   dot=e["slot_rgb"] if e["slot"] is not None else None, align="left", weight=1.35),
+        ]))
+    manual = any(e["manual"] for e in plan)
+    notes = (("Elle seçim var.",) if manual else ("Malzeme ve renge göre seçildi.", "Değiştirmek için yuvaya dokun."))
+    rows += [Row(20, [Label(app.tr(n), size="small", color="tertiary")]) for n in notes]
+    rows.append(Row(44, [Button(app.tr("Otomatik"), app.when(manual, app.clear_print_tool_overrides),
+                                icon="refresh")]))
+    return [Card(rows, pad=8, gap=4)]
 
 
 def print_options(app):

@@ -16,6 +16,10 @@ All screens on one sheet: [sheet.png](sheet.png)
 
 ![File details](03-file-details.png)
 
+### 3b. ACE slot mapping
+
+![ACE slot mapping](03b-slot-mapping.png)
+
 ### 4. Home (printing)
 
 ![Home (printing)](04-home-printing.png)

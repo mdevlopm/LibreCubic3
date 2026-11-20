@@ -852,6 +852,17 @@ STRINGS = {
     "~Orta": "Orta",
     "Kötü": "Kötü",
     "~Kapat": "Kapat",
+    # ACE slot mapping (print screen)
+    'Yuva eşleştirme': 'Yuva eşleştirme',
+    'ACE: T%d (%s) için dolu yuva yok': 'ACE: T%d (%s) için dolu yuva yok',
+    'ACE yuva eşleştirmesi gönderilemedi: %s': 'ACE yuva eşleştirmesi gönderilemedi: %s',
+    'Yuva yok': 'Yuva yok',
+    '%s: dolu yuva yok': '%s: dolu yuva yok',
+    '%d renk: Yuva %s': '%d renk: Yuva %s',
+    'Malzeme ve renge göre seçildi.': 'Malzeme ve renge göre seçildi.',
+    'Değiştirmek için yuvaya dokun.': 'Değiştirmek için yuvaya dokun.',
+    'Elle seçim var.': 'Elle seçim var.',
+    'Otomatik': 'Otomatik',
 }
 
 ERROR_PATTERNS = ()
