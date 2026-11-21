@@ -107,8 +107,10 @@ class FrameParser:
                 continue
             del self._buf[:total]
             try:
-                out.append(json.loads(payload.decode()))
-            except (UnicodeDecodeError, ValueError):
+                # strict=False: boot_firmware may hold raw control bytes once
+                # the bootloader info block has been rewritten
+                out.append(json.loads(payload.decode("utf-8", "replace"), strict=False))
+            except ValueError:
                 pass
         return out
 

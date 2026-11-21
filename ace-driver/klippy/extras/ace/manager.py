@@ -775,6 +775,14 @@ class AceManager:
         self.update_tool_map_lifecycle()
         return self.get_tool_map().get(tool_index, tool_index)
 
+    def update_rfid_print_mode(self):
+        """Keep each ACE's RFID recognition off while printing (stock gklib behaviour)."""
+        if getattr(self, "_external_spool_mode", False):
+            return
+        printing = self._print_state() == "printing"
+        for inst in self.instances:
+            inst.sync_rfid_print_mode(printing)
+
     def _print_state(self):
         """Lower-case print_stats state ("" if unavailable)."""
         try:

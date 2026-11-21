@@ -57,6 +57,15 @@ class FrameTests(unittest.TestCase):
             out += parser.feed(stream[i : i + 3])
         self.assertEqual([r["id"] for r in out], [1, 1])
 
+    def test_binary_boot_firmware_is_parsed(self):
+        # get_info after an IAP update: raw control bytes and 0x81 (not UTF-8)
+        payload = (b'{"id":3,"code":0,"result":{"firmware":"V1.3.86K",'
+                   b'"boot_firmware":"\x07\x81\x08\tANYCV1.3.86K"}}')
+        frame = (b"\xFF\xAA" + len(payload).to_bytes(2, "little") + payload
+                 + crc16(payload).to_bytes(2, "little") + b"\xFE")
+        out = FrameParser().feed(frame)
+        self.assertEqual(out[0]["result"]["firmware"], "V1.3.86K")
+
     def test_oversized_frame_refused(self):
         with self.assertRaises(AceError):
             build_frame({"method": "x" * 2000})

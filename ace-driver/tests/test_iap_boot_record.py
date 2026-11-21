@@ -29,6 +29,14 @@ class IapBootRecordTests(unittest.TestCase):
         self.assertEqual(notices, [])
         self.assertEqual(responses[0]["result"]["firmware"], "V1.3.86K")
 
+    def test_non_utf8_bytes_in_get_info_are_accepted(self):
+        # after the 105828-byte diagnostic image the record held 0x81 (invalid UTF-8)
+        proto = AceJsonProtocolAdapter()
+        raw = RAW.replace(b"\x07\x10\x08\x04", b"\x07\x81\x08\xfe")
+        responses, _, notices = proto.extract_responses(bytearray(_frame(raw)), _crc)
+        self.assertEqual(notices, [])
+        self.assertEqual(responses[0]["result"]["model"], "Anycubic Color Engine Pro")
+
     def test_binary_boot_version_is_reported_as_unknown(self):
         self.assertEqual(_printable_version("V1.0.1"), "V1.0.1")
         self.assertEqual(_printable_version("\x07\x10\x08\x04CV1.3.86K"), "?")

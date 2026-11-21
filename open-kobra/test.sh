@@ -2720,31 +2720,31 @@ PATH="$RES_BIN:$PATH" run_swu_on_fake_root "$INSTALL_SWU" "$ERR5_BROKEN" >/dev/n
 
 pass "ERR-05: kanca varken eski/uyumsuz start.sh.orig güvenli yeniden üretimi ve doğrulama testleri geçti"
 
-echo "23. ERR-07: build.sh VERSION=0.3.3 iken app.json version alanları 0.3.3 olmalı..."
+echo "23. ERR-07: build.sh VERSION=0.3.4 iken app.json version alanları 0.3.4 olmalı..."
 # (1) Check root VERSION file
 [ -f "$PROJECT_ROOT/VERSION" ] || fail "ERR-07: VERSION dosyası bulunamadı"
 EXP_VER=$(tr -d ' \t\r\n' < "$PROJECT_ROOT/VERSION")
-[ "$EXP_VER" = "0.3.3" ] || fail "ERR-07: VERSION dosyası 0.3.3 olmalı (mevcut: $EXP_VER)"
+[ "$EXP_VER" = "0.3.4" ] || fail "ERR-07: VERSION dosyası 0.3.4 olmalı (mevcut: $EXP_VER)"
 
 # (2) Check source app.json files
 SRC_KS_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$PARENT_ROOT/kobra-screen/app.json" | head -n 1)
-[ "$SRC_KS_VER" = "0.3.3" ] || fail "ERR-07: kobra-screen/app.json version 0.3.3 olmalı (mevcut: $SRC_KS_VER)"
+[ "$SRC_KS_VER" = "0.3.4" ] || fail "ERR-07: kobra-screen/app.json version 0.3.4 olmalı (mevcut: $SRC_KS_VER)"
 
 SRC_ACE_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$PARENT_ROOT/ace-standalone/app.json" | head -n 1)
-[ "$SRC_ACE_VER" = "0.3.3" ] || fail "ERR-07: ace-standalone/app.json version 0.3.3 olmalı (mevcut: $SRC_ACE_VER)"
+[ "$SRC_ACE_VER" = "0.3.4" ] || fail "ERR-07: ace-standalone/app.json version 0.3.4 olmalı (mevcut: $SRC_ACE_VER)"
 
 SRC_GUARD_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$PROJECT_ROOT/apps/05-open-kobra-guard/app.json" | head -n 1)
-[ "$SRC_GUARD_VER" = "0.3.3" ] || fail "ERR-07: apps/05-open-kobra-guard/app.json version 0.3.3 olmalı (mevcut: $SRC_GUARD_VER)"
+[ "$SRC_GUARD_VER" = "0.3.4" ] || fail "ERR-07: apps/05-open-kobra-guard/app.json version 0.3.4 olmalı (mevcut: $SRC_GUARD_VER)"
 
 # (3) Check unpack_install packaged app.json files
 PKG_KS_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$WORK/unpack_install/update_swu/apps/kobra-screen/app.json" | head -n 1)
-[ "$PKG_KS_VER" = "0.3.3" ] || fail "ERR-07: paket kobra-screen/app.json version 0.3.3 olmalı (mevcut: $PKG_KS_VER)"
+[ "$PKG_KS_VER" = "0.3.4" ] || fail "ERR-07: paket kobra-screen/app.json version 0.3.4 olmalı (mevcut: $PKG_KS_VER)"
 
 PKG_ACE_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$WORK/unpack_install/update_swu/apps/ace-standalone/app.json" | head -n 1)
-[ "$PKG_ACE_VER" = "0.3.3" ] || fail "ERR-07: paket ace-standalone/app.json version 0.3.3 olmalı (mevcut: $PKG_ACE_VER)"
+[ "$PKG_ACE_VER" = "0.3.4" ] || fail "ERR-07: paket ace-standalone/app.json version 0.3.4 olmalı (mevcut: $PKG_ACE_VER)"
 
 PKG_GUARD_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$WORK/unpack_install/update_swu/apps/05-open-kobra-guard/app.json" | head -n 1)
-[ "$PKG_GUARD_VER" = "0.3.3" ] || fail "ERR-07: paket 05-open-kobra-guard/app.json version 0.3.3 olmalı (mevcut: $PKG_GUARD_VER)"
+[ "$PKG_GUARD_VER" = "0.3.4" ] || fail "ERR-07: paket 05-open-kobra-guard/app.json version 0.3.4 olmalı (mevcut: $PKG_GUARD_VER)"
 
 # (4) Verify that build.sh strictly enforces version match for all three app.json files
 ERR7_VT="$WORK/err07_vt"
@@ -2767,7 +2767,7 @@ if (cd "$ERR7_VT/open-kobra" && OPEN_KOBRA_DIST_DIR="$ERR7_VT/out" ./build.sh >/
 fi
 
 # Restore kobra-screen version and test ace-standalone mismatch
-sed 's/"version": "[^"]*"/"version": "0.3.3"/' "$ERR7_VT/fake_ks/app.json" > "$ERR7_VT/fake_ks/app.json.tmp"
+sed 's/"version": "[^"]*"/"version": "0.3.4"/' "$ERR7_VT/fake_ks/app.json" > "$ERR7_VT/fake_ks/app.json.tmp"
 mv "$ERR7_VT/fake_ks/app.json.tmp" "$ERR7_VT/fake_ks/app.json"
 sed 's/"version": "[^"]*"/"version": "0.1"/' "$ERR7_VT/fake_as/app.json" > "$ERR7_VT/fake_as/app.json.tmp"
 mv "$ERR7_VT/fake_as/app.json.tmp" "$ERR7_VT/fake_as/app.json"
@@ -2776,7 +2776,7 @@ if (cd "$ERR7_VT/open-kobra" && OPEN_KOBRA_DIST_DIR="$ERR7_VT/out" ./build.sh >/
 fi
 
 # Restore ace-standalone version and test 05-open-kobra-guard mismatch
-sed 's/"version": "[^"]*"/"version": "0.3.3"/' "$ERR7_VT/fake_as/app.json" > "$ERR7_VT/fake_as/app.json.tmp"
+sed 's/"version": "[^"]*"/"version": "0.3.4"/' "$ERR7_VT/fake_as/app.json" > "$ERR7_VT/fake_as/app.json.tmp"
 mv "$ERR7_VT/fake_as/app.json.tmp" "$ERR7_VT/fake_as/app.json"
 sed 's/"version": "[^"]*"/"version": "0.2.1"/' "$ERR7_VT/open-kobra/apps/05-open-kobra-guard/app.json" > "$ERR7_VT/guard.tmp"
 mv "$ERR7_VT/guard.tmp" "$ERR7_VT/open-kobra/apps/05-open-kobra-guard/app.json"
@@ -2784,7 +2784,7 @@ if (cd "$ERR7_VT/open-kobra" && OPEN_KOBRA_DIST_DIR="$ERR7_VT/out" ./build.sh >/
     fail "ERR-07: 05-open-kobra-guard/app.json sürüm uyuşmazlığında build.sh başarısız olmalıydı"
 fi
 
-pass "ERR-07: VERSION=0.3.3 iken tüm app.json dosyalarının 0.3.3 olduğu ve uyuşmazlıkta build.sh'ın reddettiği doğrulandı"
+pass "ERR-07: VERSION=0.3.4 iken tüm app.json dosyalarının 0.3.4 olduğu ve uyuşmazlıkta build.sh'ın reddettiği doğrulandı"
 
 echo "24. ERR-08: rescue.sh, 05-open-kobra-guard/app.sh ve update.sh içinde {32} regex kalmamalı..."
 # (1) grep check across the 3 updated files: grep -n '{32}' MUST return empty (exit code 1)

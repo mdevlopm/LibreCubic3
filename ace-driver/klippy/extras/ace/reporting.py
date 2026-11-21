@@ -112,3 +112,28 @@ def get_status(sink=None):
     result.setdefault("toolhead_extrusion_allowed", False)
     _status_cache[cache_key] = (sink, raw_snapshot, result)
     return result.copy()
+
+
+# Diagnostic ACE image (tools/ace-fw/patch_diag.py) packs the reset cause into
+# get_status.fan_speed; stock firmware reports a constant 7000 (bit 23 clear).
+_RESET_FLAG_NAMES = ("pin", "power-on/low-voltage", "software", "watchdog",
+                     "window-watchdog", "low-power")
+_FAULT_NAMES = ("", "HardFault", "MemManage fault", "BusFault", "UsageFault", "assert")
+
+
+def decode_reset_report(fan_speed):
+    """Return ``(reset_text, fault_text_or_None)`` or None for a stock image."""
+    try:
+        value = int(fan_speed)
+    except (TypeError, ValueError):
+        return None
+    if value < 0 or not value & (1 << 23) or value >> 30:
+        return None
+    flags = (value >> 24) & 0x3F
+    fault = (value >> 20) & 7
+    names = [n for i, n in enumerate(_RESET_FLAG_NAMES) if flags & (1 << i)]
+    reset_text = ", ".join(names) if names else "unknown (flags cleared before the app)"
+    fault_text = None
+    if 0 < fault < len(_FAULT_NAMES):
+        fault_text = "%s at 0x%08x" % (_FAULT_NAMES[fault], 0x08000000 | (value & 0xFFFFF))
+    return reset_text, fault_text

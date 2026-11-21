@@ -34,10 +34,29 @@ To go back, run the same tool with the original V1.3.863 file.
 
 After an upload, the ACE bootloader writes unreadable bytes into the `boot_firmware` field of the `get_info` reply. The ACE driver and ace-standalone in this repository tolerate it (the bootloader version shows as "?"). How the stock Anycubic software behaves in this state has not been tested.
 
+## Reset-cause diagnostics (optional, for debugging)
+
+`patch_diag.py` builds a diagnostic image on top of `ACE_V1.3.86K.bin` for finding out why an ACE reboots by itself. On every boot the ACE reads the MCU's reset-cause register, and its fault handlers (and C `assert`) save the faulting code address in RAM before the watchdog restarts it. The result is reported in the `fan_speed` field of `get_status`, which is a constant 7000 in the stock firmware. After every (re)connect the ACE driver prints one line, for example:
+
+```
+ACE[0]: last ACE reset: pin, watchdog; before it: BusFault at 0x0801xxxx
+```
+
+`power-on/low-voltage` means the ACE lost power; `watchdog` with a fault address points at the crashing code; `watchdog` alone means it hung without a fault. The version string stays `V1.3.86K`, so the 1-minute cool-down countdown keeps working. The same upload risks apply.
+
+```sh
+python3 patch_diag.py ACE_V1.3.86K.bin ACE_V1.3.86K_diag.bin
+python3 ace_iap.py --dry-run ACE_V1.3.86K_diag.bin
+python3 ace_iap.py --expect-version V1.3.86K ACE_V1.3.86K_diag.bin
+```
+
+The output's SHA-256 must be `a4ffb78cd904844895f9cf18f0ccfd2b36b6f9208bd82a18ce3cda87bbfbc2d7`. To remove it, upload `ACE_V1.3.86K.bin` again.
+
 ## Tests
 
 ```sh
 python3 -m unittest test_ace_iap -v
+ACE_86K_IMAGE=ACE_V1.3.86K.bin python3 -m unittest test_patch_diag -v
 ```
 
-The tests use a fake serial device, not real hardware.
+`test_ace_iap` uses a fake serial device, not real hardware. `test_patch_diag` runs the added code in a small emulator of the Thumb instructions it uses; it needs the V1.3.86K image and is skipped without it.

@@ -101,6 +101,7 @@ class ConnectionHealthMonitor:
             mgr.update_ace_support_active_state()
             self.update_external_spool_mode()
             mgr.update_tool_map_lifecycle()
+            mgr.update_rfid_print_mode()
             mgr._monitor_transport_reconnects()
 
             # Check connection health for all instances (if supervision enabled)

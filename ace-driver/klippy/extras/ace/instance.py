@@ -123,9 +123,12 @@ class AceInstance(InstanceStatusMixin, InstanceMotionMixin, InstanceLoadingMixin
         self._pending_feed_assist_restore = -1  # Slot to restore after first heartbeat
         self._feed_assist_restore_defers = 0
         self._pending_rfid_refresh = False  # Flag to refresh all RFID data after reconnect
+        self._pending_reset_report = False  # Log the diagnostic image's reset cause once per connect
         self._last_retract_early_stopped = False  # Slot sensor confirmed empty during _retract() (or slot was already empty)
         self._dryer_error = None
         self._last_dryer_error_reported = None
+        self._rfid_mode_sent = None  # 0/1 last enable_rfid state the ACE accepted
+        self._rfid_mode_pending = False
         self._pending_rfid_queries = set()  # Track slots with in-flight RFID queries
         self.status_failure_threshold = max(
             1,
@@ -355,6 +358,40 @@ class AceInstance(InstanceStatusMixin, InstanceMotionMixin, InstanceLoadingMixin
         """Change the ACE fan speed (``set_fan_speed`` RPC, ACE1 only)."""
         request = self.protocol.build_set_fan_speed_request(int(fan_speed))
         self.send_request(request, callback or (lambda response: None))
+
+    def sync_rfid_print_mode(self, printing):
+        """RFID recognition off while printing, on otherwise.
+
+        Same as stock gklib: start_print / resume disable it, pause / cancel /
+        finish enable it. Sent once per change; a reconnect (the ACE boots with
+        RFID on) clears ``_rfid_mode_sent`` so the state is sent again.
+        """
+        want = 0 if printing else 1
+        if self._rfid_mode_pending or self._rfid_mode_sent == want:
+            return
+        if not self.serial_mgr.is_connected():
+            return
+        try:
+            if printing:
+                request = self.protocol.build_disable_rfid_request()
+            else:
+                request = self.protocol.build_enable_rfid_request()
+        except NotImplementedError:
+            self._rfid_mode_sent = want
+            return
+        self._rfid_mode_pending = True
+
+        def _done(response):
+            self._rfid_mode_pending = False
+            if response and response.get("code") == 0:
+                self._rfid_mode_sent = want
+            else:
+                logging.info(
+                    "ACE[%s]: %s failed: %s", self.instance_num, request["method"],
+                    response.get("msg") if response else "no response",
+                )
+
+        self.send_request(request, _done)
 
     def _tangle_policy(self):
         """Return ``(enabled, threshold_s)`` from the manager (off by default)."""

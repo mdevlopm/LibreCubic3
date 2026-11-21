@@ -105,9 +105,10 @@ class AceJsonProtocolAdapter(AceProtocolAdapter):
                 continue
 
             try:
-                # strict=False: after an IAP update the ACE bootloader leaves binary bytes in the
-                # boot version record, so get_info carries raw control characters in a string.
-                responses.append(json.loads(payload.decode("utf-8"), strict=False))
+                # strict=False + "replace": after an IAP update the ACE bootloader leaves binary
+                # bytes in the boot version record, so get_info carries raw control characters
+                # (and bytes >= 0x80 that are not UTF-8) in the boot_firmware string.
+                responses.append(json.loads(payload.decode("utf-8", "replace"), strict=False))
             except (UnicodeDecodeError, ValueError) as exc:
                 notices.append(f"JSON decode error: {exc}")
 
@@ -240,3 +241,11 @@ class AceJsonProtocolAdapter(AceProtocolAdapter):
     def build_stop_drying_request(self) -> Dict[str, Any]:
         """Build the current ACE1 stop-drying request."""
         return {"method": "drying_stop"}
+
+    def build_enable_rfid_request(self) -> Dict[str, Any]:
+        """Stock ``(*ACEProxy).EnableRfid`` (0x572ba0): no params."""
+        return {"method": "enable_rfid"}
+
+    def build_disable_rfid_request(self) -> Dict[str, Any]:
+        """Stock ``(*ACEProxy).DisableRfid`` (0x572c40): no params."""
+        return {"method": "disable_rfid"}

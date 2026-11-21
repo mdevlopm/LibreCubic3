@@ -286,3 +286,11 @@ class AceProtocolAdapter:
     def build_stop_drying_request(self) -> Dict[str, Any]:
         """Build a request to stop the dryer."""
         raise NotImplementedError()
+
+    def build_enable_rfid_request(self) -> Dict[str, Any]:
+        """Build a request to turn RFID recognition on (not supported by default)."""
+        raise NotImplementedError("RFID recognition switch is not supported by this protocol")
+
+    def build_disable_rfid_request(self) -> Dict[str, Any]:
+        """Build a request to turn RFID recognition off (not supported by default)."""
+        raise NotImplementedError("RFID recognition switch is not supported by this protocol")

@@ -9,7 +9,7 @@ import json
 import traceback
 import logging
 
-from .reporting import emit_error, is_cancelled_response
+from .reporting import decode_reset_report, emit_error, is_cancelled_response
 from .config import (
     ACE_INSTANCES,
     INSTANCE_MANAGERS,
@@ -301,7 +301,12 @@ def cmd_ACE_GET_STATUS(gcmd):
                 lines.append(f"RFID Enabled: {result['enable_rfid']}")
                 handled_keys.add('enable_rfid')
             if 'fan_speed' in result:
-                lines.append(f"Fan Speed: {result['fan_speed']} RPM")
+                report = decode_reset_report(result['fan_speed'])
+                if report is None:
+                    lines.append(f"Fan Speed: {result['fan_speed']} RPM")
+                else:
+                    lines.append(f"Last ACE reset: {report[0]}"
+                                 + (f"; before it: {report[1]}" if report[1] else ""))
                 handled_keys.add('fan_speed')
 
             # Feed assist status

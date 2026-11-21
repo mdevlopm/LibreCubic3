@@ -11,7 +11,7 @@ from .config import (
     create_inventory,
     normalize_ace_slot_state,
 )
-from .reporting import is_cancelled_response
+from .reporting import decode_reset_report, is_cancelled_response
 
 
 class InstanceStatusMixin:
@@ -262,6 +262,17 @@ class InstanceStatusMixin:
                 else:
                     self._dryer_error = None
                     self._last_dryer_error_reported = None
+
+            if self._pending_reset_report and isinstance(self._info, dict):
+                self._pending_reset_report = False
+                report = decode_reset_report(self._info.get("fan_speed"))
+                if report is not None:
+                    reset_text, fault_text = report
+                    msg = f"ACE[{self.instance_num}]: last ACE reset: {reset_text}"
+                    if fault_text:
+                        msg += f"; before it: {fault_text}"
+                    self.gcode.respond_info(msg)
+                    logging.info(msg)
 
             # Handle pending RFID refresh after reconnect
             if self._pending_rfid_refresh:
@@ -648,6 +659,9 @@ class InstanceStatusMixin:
         # Requests of the previous session were dropped without callbacks, so
         # nothing would ever clear these in-flight markers.
         self._shared_bus_hb_outstanding = False
+        self._rfid_mode_sent = None  # the ACE boots with RFID recognition on
+        self._rfid_mode_pending = False
+        self._pending_reset_report = True
         self._pending_rfid_queries.clear()
         self._rfid_retry_after.clear()
 

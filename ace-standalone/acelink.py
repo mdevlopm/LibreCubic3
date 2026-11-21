@@ -79,9 +79,10 @@ class FrameParser:
                 continue
             del self._buf[:total]
             try:
-                # strict=False: boot_firmware holds raw bytes after an IAP update
-                out.append(json.loads(payload.decode("utf-8"), strict=False))
-            except (UnicodeDecodeError, ValueError):
+                # strict=False + "replace": boot_firmware holds raw bytes after an IAP
+                # update, control characters and bytes that are not UTF-8
+                out.append(json.loads(payload.decode("utf-8", "replace"), strict=False))
+            except ValueError:
                 pass
         return out
 
