@@ -43,5 +43,98 @@ class WizardSequenceTests(unittest.TestCase):
         self.assertLess(lines.index("M104 S170"), lines.index("NOZZLE_WIPE_SEQUENCE"))
 
 
+class _StubApp:
+    """Just enough of App for wizards.Run and App.advance_wizard_if_ready."""
+
+    def __init__(self, status):
+        import threading
+        self._lock = threading.RLock()
+        self.status = status
+        self.modal = None
+        self.wizard = None
+        self.heating_lock = self.extrusion_lock = False
+        self.sent = []
+        self.dirty = False
+
+    def get(self, obj, key, default=0):
+        value = self.status.get(obj, {}).get(key, default)
+        return default if value is None else value
+
+    def tr(self, text):
+        return text
+
+    def gcode(self, script):
+        self.sent.append(script)
+        return True
+
+    def do(self, call, on_error=None):
+        self.sent.append("<do>")
+
+    def notify(self, text):
+        pass
+
+
+class AutoAdvanceTests(unittest.TestCase):
+    def start(self, key, index, status):
+        from kobra_screen.app import App
+        app = _StubApp(status)
+        app.wizard = wizards.Run(wizards.WIZARDS[key])
+        app.wizard.index = index
+        return App, app
+
+    def test_zoffset_moves_on_when_bed_and_nozzle_are_hot(self):
+        App, app = self.start("zoffset", 1, {"heater_bed": {"temperature": 40.0}, "extruder": {"temperature": 170.0}})
+        self.assertFalse(App.advance_wizard_if_ready(app))
+        self.assertEqual(app.wizard.index, 1)
+        app.status["heater_bed"]["temperature"] = 59.0
+        self.assertTrue(App.advance_wizard_if_ready(app))
+        self.assertEqual(app.wizard.index, 2)          # "Ölçüm": LEVIQ_WIPING + LEVIQ_AUTO_ZOFFSET started
+        self.assertTrue(app.wizard.running)
+        self.assertFalse(App.advance_wizard_if_ready(app))   # the blocking step is not skipped
+
+    def test_clean_moves_on_to_wiping_when_hot(self):
+        App, app = self.start("clean", 1, {"extruder": {"temperature": 169.0}})
+        self.assertTrue(App.advance_wizard_if_ready(app))
+        self.assertEqual(wizards.WIZARDS["clean"].steps[app.wizard.index].title, "Silme")
+
+    def test_steps_waiting_for_the_user_never_auto_advance(self):
+        # load: after heating the user feeds filament by hand, so İleri stays a button
+        App, app = self.start("load", 1, {"extruder": {"temperature": 300.0}})
+        app.wizard.params = {"hot": 215}
+        self.assertFalse(App.advance_wizard_if_ready(app))
+        self.assertEqual(app.wizard.index, 1)
+
+    def test_no_advance_under_a_dialog(self):
+        App, app = self.start("zoffset", 1, {"heater_bed": {"temperature": 60.0}, "extruder": {"temperature": 170.0}})
+        app.modal = object()
+        self.assertFalse(App.advance_wizard_if_ready(app))
+
+
+class LeviqPhaseTextTests(unittest.TestCase):
+    def text(self, phase, **status):
+        app = _StubApp(dict({"leviq3": {"phase": phase}}, **status))
+        return wizards.leviq_phase_text(app)
+
+    def test_each_phase_has_its_own_text(self):
+        self.assertEqual(self.text("wiping"), "Nozul siliniyor")
+        self.assertEqual(self.text("cooling"), "Nozul soğutuluyor")
+        self.assertEqual(self.text("homing"), "Z ekseni sıfırlanıyor")
+        self.assertEqual(self.text("mesh"), "Tabla ağı ölçülüyor")
+        self.assertEqual(self.text("zoffset"), "Z-offset ölçülüyor")
+
+    def test_heating_shows_the_bed_while_it_is_behind(self):
+        self.assertEqual(self.text("heating", heater_bed={"temperature": 40.0, "target": 60.0}), "Tabla ısınıyor: 40°C / 60°C")
+        self.assertEqual(self.text("heating", heater_bed={"temperature": 60.0, "target": 60.0}), "Isıtılıyor")
+
+    def test_unknown_or_missing_phase_falls_back(self):
+        self.assertEqual(self.text(""), "Çalışıyor...")
+        self.assertEqual(wizards.leviq_phase_text(_StubApp({})), "Çalışıyor...")
+
+    def test_level_step_no_longer_just_says_leviq(self):
+        step = wizards.WIZARDS["level"].steps[1]
+        self.assertEqual(step.enter, "G28\nLEVIQ")
+        self.assertNotIn("LeviQ çalışıyor", step.text)
+
+
 if __name__ == "__main__":
     unittest.main()

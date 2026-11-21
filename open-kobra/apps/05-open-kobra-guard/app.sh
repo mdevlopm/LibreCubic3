@@ -109,17 +109,22 @@ file_md5() {
     md5sum "$1" 2>/dev/null | awk '{print $1}'
 }
 
+# Prints every valid expected MD5 (space separated): the guard's own copy and the
+# persistent one. A leviq3.py updated together with only one of them (a hotfix
+# that refreshed open-kobra/leviq3.py.md5) is still accepted instead of being
+# disabled at every boot.
 get_expected_leviq3_md5() {
+    FOUND=""
     for MD5_FILE in "$APP_ROOT/leviq3.py.md5" "$STATE_DIR/leviq3.py.md5"; do
         if [ -f "$MD5_FILE" ]; then
             CAND=$(awk 'NF { print $1; exit }' "$MD5_FILE" 2>/dev/null | tr -d ' \t\r\n' || true)
             if printf '%s\n' "$CAND" | awk 'length($0) == 32 && $0 ~ /^[0-9a-fA-F]+$/ { ok=1 } END { exit !ok }'; then
-                printf '%s\n' "$CAND"
-                return 0
+                FOUND="${FOUND:+$FOUND }$CAND"
             fi
         fi
     done
-    return 1
+    [ -n "$FOUND" ] || return 1
+    printf '%s\n' "$FOUND"
 }
 
 verify_leviq3_py_ok() {
@@ -128,8 +133,11 @@ verify_leviq3_py_ok() {
     [ -s "$PY_PATH" ] || return 1
     if [ -n "$EXP_HASH" ]; then
         ACT_HASH=$(file_md5 "$PY_PATH" || true)
-        [ "$ACT_HASH" = "$EXP_HASH" ] || return 1
-        return 0
+        [ -n "$ACT_HASH" ] || return 1
+        for ONE_HASH in $EXP_HASH; do
+            [ "$ACT_HASH" = "$ONE_HASH" ] && return 0
+        done
+        return 1
     fi
     if [ -s "$STATE_DIR/leviq3.py" ]; then
         cmp -s "$PY_PATH" "$STATE_DIR/leviq3.py" 2>/dev/null || return 1
@@ -478,7 +486,7 @@ version() {
             return 0
         fi
     fi
-    printf '0.3.4\n'
+    printf '0.3.5\n'
 }
 
 case "${1:-}" in

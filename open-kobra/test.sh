@@ -229,6 +229,10 @@ python3 "$WORK/posix_scan.py" \
     "$PROJECT_ROOT/rescue/rescue.sh" \
     "$PROJECT_ROOT/swu/install/update.sh" \
     "$PROJECT_ROOT/swu/uninstall/update.sh" \
+    "$PROJECT_ROOT/bundle/update.sh" \
+    "$PROJECT_ROOT/bundle/run.sh" \
+    "$PROJECT_ROOT/build_bundle.sh" \
+    "$PROJECT_ROOT/test_bundle.sh" \
     "$WORK/unpack_install/update_swu/apps/ace-standalone/app.sh" || fail "open-kobra POSIX/BusyBox taraması başarısız"
 pass "open-kobra ve ace-standalone POSIX / BusyBox uyumluluk taraması geçti"
 
@@ -240,7 +244,11 @@ if command -v shellcheck >/dev/null 2>&1; then
         "$PROJECT_ROOT/rescue/rescue.sh" \
         "$WORK/unpack_install/update_swu/apps/ace-standalone/app.sh" \
         "$PROJECT_ROOT/swu/install/update.sh" \
-        "$PROJECT_ROOT/swu/uninstall/update.sh"; do
+        "$PROJECT_ROOT/swu/uninstall/update.sh" \
+        "$PROJECT_ROOT/bundle/update.sh" \
+        "$PROJECT_ROOT/bundle/run.sh" \
+        "$PROJECT_ROOT/build_bundle.sh" \
+        "$PROJECT_ROOT/test_bundle.sh"; do
         shellcheck "$SH" || fail "shellcheck başarısız: $SH"
     done
     pass "shellcheck kontrolü geçti"
@@ -518,6 +526,22 @@ assert cp.has_section("leviq3"), "[leviq3] was not re-enabled!"
 assert cp.getfloat("leviq3", "max_auto_travel") == 3.0
 assert cp.getint("leviq3", "noise_diff") == 3000
 PY
+
+# Scenario 7a-3b: hotfixed leviq3.py whose new MD5 is only in the persistent open-kobra/leviq3.py.md5 (the guard's
+# own copy still holds the installed one) -> guard keeps it and the include, instead of disabling LeviQ every boot
+HOTFIX_PY="$E2E/useremain/home/rinkhals/apps/vanilla-klipper/klippy/extras/leviq3.py"
+HOTFIX_STATE="$E2E/useremain/home/rinkhals/open-kobra"
+cp -p "$HOTFIX_STATE/leviq3.py" "$WORK/leviq3.py.before_hotfix"
+cp -p "$HOTFIX_STATE/leviq3.py.md5" "$WORK/leviq3.py.md5.before_hotfix"
+printf '\n# hotfix\n' >> "$HOTFIX_PY"
+cp -p "$HOTFIX_PY" "$HOTFIX_STATE/leviq3.py"
+md5sum "$HOTFIX_PY" | awk '{print $1}' > "$HOTFIX_STATE/leviq3.py.md5"
+OPEN_KOBRA_ROOT="$E2E" "$GUARD_SH" start
+[ "$(tail -n 1 "$HOTFIX_PY")" = "# hotfix" ] || fail "Guard kalıcı MD5 ile eşleşen düzeltilmiş leviq3.py'yi değiştirmemeliydi"
+has_line "$E2E/useremain/home/rinkhals/printer_data/config/printer.klipper.cfg" "[include leviq3.cfg]" || fail "Kalıcı MD5 ile eşleşen leviq3.py için [include leviq3.cfg] açık kalmalıydı"
+cp -p "$WORK/leviq3.py.before_hotfix" "$HOTFIX_STATE/leviq3.py"
+cp -p "$WORK/leviq3.py.md5.before_hotfix" "$HOTFIX_STATE/leviq3.py.md5"
+cp -p "$WORK/leviq3.py.before_hotfix" "$HOTFIX_PY"
 
 # Scenario 7a-4: guard internal timeout/failure always exits 0, logs, and runs _guard_main ONLY ONCE (B-03, Y2-01)
 OPEN_KOBRA_GUARD_TRACE_FILE="$WORK/guard_trace.log" \
@@ -2720,31 +2744,31 @@ PATH="$RES_BIN:$PATH" run_swu_on_fake_root "$INSTALL_SWU" "$ERR5_BROKEN" >/dev/n
 
 pass "ERR-05: kanca varken eski/uyumsuz start.sh.orig güvenli yeniden üretimi ve doğrulama testleri geçti"
 
-echo "23. ERR-07: build.sh VERSION=0.3.4 iken app.json version alanları 0.3.4 olmalı..."
+echo "23. ERR-07: build.sh VERSION=0.3.5 iken app.json version alanları 0.3.5 olmalı..."
 # (1) Check root VERSION file
 [ -f "$PROJECT_ROOT/VERSION" ] || fail "ERR-07: VERSION dosyası bulunamadı"
 EXP_VER=$(tr -d ' \t\r\n' < "$PROJECT_ROOT/VERSION")
-[ "$EXP_VER" = "0.3.4" ] || fail "ERR-07: VERSION dosyası 0.3.4 olmalı (mevcut: $EXP_VER)"
+[ "$EXP_VER" = "0.3.5" ] || fail "ERR-07: VERSION dosyası 0.3.5 olmalı (mevcut: $EXP_VER)"
 
 # (2) Check source app.json files
 SRC_KS_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$PARENT_ROOT/kobra-screen/app.json" | head -n 1)
-[ "$SRC_KS_VER" = "0.3.4" ] || fail "ERR-07: kobra-screen/app.json version 0.3.4 olmalı (mevcut: $SRC_KS_VER)"
+[ "$SRC_KS_VER" = "0.3.5" ] || fail "ERR-07: kobra-screen/app.json version 0.3.5 olmalı (mevcut: $SRC_KS_VER)"
 
 SRC_ACE_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$PARENT_ROOT/ace-standalone/app.json" | head -n 1)
-[ "$SRC_ACE_VER" = "0.3.4" ] || fail "ERR-07: ace-standalone/app.json version 0.3.4 olmalı (mevcut: $SRC_ACE_VER)"
+[ "$SRC_ACE_VER" = "0.3.5" ] || fail "ERR-07: ace-standalone/app.json version 0.3.5 olmalı (mevcut: $SRC_ACE_VER)"
 
 SRC_GUARD_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$PROJECT_ROOT/apps/05-open-kobra-guard/app.json" | head -n 1)
-[ "$SRC_GUARD_VER" = "0.3.4" ] || fail "ERR-07: apps/05-open-kobra-guard/app.json version 0.3.4 olmalı (mevcut: $SRC_GUARD_VER)"
+[ "$SRC_GUARD_VER" = "0.3.5" ] || fail "ERR-07: apps/05-open-kobra-guard/app.json version 0.3.5 olmalı (mevcut: $SRC_GUARD_VER)"
 
 # (3) Check unpack_install packaged app.json files
 PKG_KS_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$WORK/unpack_install/update_swu/apps/kobra-screen/app.json" | head -n 1)
-[ "$PKG_KS_VER" = "0.3.4" ] || fail "ERR-07: paket kobra-screen/app.json version 0.3.4 olmalı (mevcut: $PKG_KS_VER)"
+[ "$PKG_KS_VER" = "0.3.5" ] || fail "ERR-07: paket kobra-screen/app.json version 0.3.5 olmalı (mevcut: $PKG_KS_VER)"
 
 PKG_ACE_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$WORK/unpack_install/update_swu/apps/ace-standalone/app.json" | head -n 1)
-[ "$PKG_ACE_VER" = "0.3.4" ] || fail "ERR-07: paket ace-standalone/app.json version 0.3.4 olmalı (mevcut: $PKG_ACE_VER)"
+[ "$PKG_ACE_VER" = "0.3.5" ] || fail "ERR-07: paket ace-standalone/app.json version 0.3.5 olmalı (mevcut: $PKG_ACE_VER)"
 
 PKG_GUARD_VER=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$WORK/unpack_install/update_swu/apps/05-open-kobra-guard/app.json" | head -n 1)
-[ "$PKG_GUARD_VER" = "0.3.4" ] || fail "ERR-07: paket 05-open-kobra-guard/app.json version 0.3.4 olmalı (mevcut: $PKG_GUARD_VER)"
+[ "$PKG_GUARD_VER" = "0.3.5" ] || fail "ERR-07: paket 05-open-kobra-guard/app.json version 0.3.5 olmalı (mevcut: $PKG_GUARD_VER)"
 
 # (4) Verify that build.sh strictly enforces version match for all three app.json files
 ERR7_VT="$WORK/err07_vt"
@@ -2767,7 +2791,7 @@ if (cd "$ERR7_VT/open-kobra" && OPEN_KOBRA_DIST_DIR="$ERR7_VT/out" ./build.sh >/
 fi
 
 # Restore kobra-screen version and test ace-standalone mismatch
-sed 's/"version": "[^"]*"/"version": "0.3.4"/' "$ERR7_VT/fake_ks/app.json" > "$ERR7_VT/fake_ks/app.json.tmp"
+sed 's/"version": "[^"]*"/"version": "0.3.5"/' "$ERR7_VT/fake_ks/app.json" > "$ERR7_VT/fake_ks/app.json.tmp"
 mv "$ERR7_VT/fake_ks/app.json.tmp" "$ERR7_VT/fake_ks/app.json"
 sed 's/"version": "[^"]*"/"version": "0.1"/' "$ERR7_VT/fake_as/app.json" > "$ERR7_VT/fake_as/app.json.tmp"
 mv "$ERR7_VT/fake_as/app.json.tmp" "$ERR7_VT/fake_as/app.json"
@@ -2776,7 +2800,7 @@ if (cd "$ERR7_VT/open-kobra" && OPEN_KOBRA_DIST_DIR="$ERR7_VT/out" ./build.sh >/
 fi
 
 # Restore ace-standalone version and test 05-open-kobra-guard mismatch
-sed 's/"version": "[^"]*"/"version": "0.3.4"/' "$ERR7_VT/fake_as/app.json" > "$ERR7_VT/fake_as/app.json.tmp"
+sed 's/"version": "[^"]*"/"version": "0.3.5"/' "$ERR7_VT/fake_as/app.json" > "$ERR7_VT/fake_as/app.json.tmp"
 mv "$ERR7_VT/fake_as/app.json.tmp" "$ERR7_VT/fake_as/app.json"
 sed 's/"version": "[^"]*"/"version": "0.2.1"/' "$ERR7_VT/open-kobra/apps/05-open-kobra-guard/app.json" > "$ERR7_VT/guard.tmp"
 mv "$ERR7_VT/guard.tmp" "$ERR7_VT/open-kobra/apps/05-open-kobra-guard/app.json"
@@ -2784,7 +2808,7 @@ if (cd "$ERR7_VT/open-kobra" && OPEN_KOBRA_DIST_DIR="$ERR7_VT/out" ./build.sh >/
     fail "ERR-07: 05-open-kobra-guard/app.json sürüm uyuşmazlığında build.sh başarısız olmalıydı"
 fi
 
-pass "ERR-07: VERSION=0.3.4 iken tüm app.json dosyalarının 0.3.4 olduğu ve uyuşmazlıkta build.sh'ın reddettiği doğrulandı"
+pass "ERR-07: VERSION=0.3.5 iken tüm app.json dosyalarının 0.3.5 olduğu ve uyuşmazlıkta build.sh'ın reddettiği doğrulandı"
 
 echo "24. ERR-08: rescue.sh, 05-open-kobra-guard/app.sh ve update.sh içinde {32} regex kalmamalı..."
 # (1) grep check across the 3 updated files: grep -n '{32}' MUST return empty (exit code 1)

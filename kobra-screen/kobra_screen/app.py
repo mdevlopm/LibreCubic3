@@ -224,6 +224,8 @@ class App(_AppSettingsMixin, _AppSpoolsMixin, _AppPollingMixin, _AppAceMixin,
         changed = self._finish_ace_pending_timeout() if self.ace_pending else False
         if self.check_goto_file():
             changed = True
+        if self.advance_wizard_if_ready():
+            changed = True
         with self._lock:
             if self._dryer_stopped_ts is not None:
                 left = self.dryer_cooldown_s() - (self._clock() - self._dryer_stopped_ts)
@@ -546,6 +548,20 @@ class App(_AppSettingsMixin, _AppSpoolsMixin, _AppPollingMixin, _AppAceMixin,
             self.wizard.enter(self)
             self.dirty = True
         return True
+
+    def advance_wizard_if_ready(self):
+        """Move an `auto` wizard step on once its wait is done (heating reached), without pressing İleri."""
+        with self._lock:
+            run = self.wizard
+            if run is None or self.modal or run.failed or run.running:
+                return False
+            step = run.step
+            if not step.auto or run.index + 1 >= len(run.wizard.steps):
+                return False
+            if not run.progress(self)[0]:
+                return False
+            run.next(self)
+            return True
 
     def end_wizard(self, cancelled):
         with self._lock:

@@ -405,7 +405,14 @@ STRINGS = {
     "Tabla boş ve temiz olmalı. Nozul ve tabla ısınacak, nozul silinecek ve tabla ağı ölçülecek. Birkaç dakika sürer.": (
         "Bed must be empty and clean. Nozzle and bed will heat, wipe, and probe the mesh. Takes a few minutes."
     ),
-    "LeviQ çalışıyor.": "Running LeviQ.",
+    "Nozul ısınıp silinecek, 140°C'ye soğuyacak ve tabla 25 noktada ölçülecek.": "The nozzle is heated and wiped, cooled to 140°C, then the bed is probed at 25 points.",
+    "Tabla ısınıyor: %.0f°C / %.0f°C": "Bed heating: %.0f°C / %.0f°C",
+    "Isıtılıyor": "Heating",
+    "Nozul siliniyor": "Wiping the nozzle",
+    "Nozul soğutuluyor": "Cooling the nozzle",
+    "Z ekseni sıfırlanıyor": "Homing Z",
+    "Tabla ağı ölçülüyor": "Probing the bed mesh",
+    "Z-offset ölçülüyor": "Measuring Z-offset",
     "Tabla ağı ölçüldü.": "Bed mesh measured.",
     "Tabla boş ve temiz, nozul ucu temiz olmalı. Nozul tablaya dokunarak sıfır noktasını ölçecek.": (
         "Bed must be clear and nozzle tip clean. Nozzle will touch the bed to probe zero."

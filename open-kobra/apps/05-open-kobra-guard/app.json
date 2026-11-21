@@ -2,7 +2,7 @@
     "$version": "1",
     "name": "open-kobra LeviQ3 Guard",
     "description": "Checks and restores leviq3.py before vanilla-klipper starts, or safely disables [include leviq3.cfg] so Klipper never fails to boot.",
-    "version": "0.3.4",
+    "version": "0.3.5",
     "requirements": {
         "cpu": 0,
         "memory": 5

@@ -1920,5 +1920,95 @@ class Paket5HardeningTests(unittest.TestCase):
         self.assertTrue(any("MOVE=1" in l for l in set_lines))
 
 
+class PhaseTests(unittest.TestCase):
+    """get_status()['phase'] tells the touchscreen what a LEVIQ* command is doing."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.state_file = os.path.join(self.tmp.name, 'leviq3_state.json')
+
+    def phases_during(self, line, **config):
+        config.setdefault('auto_zoffset_on_off', 1)
+        printer = Printer(self.state_file, **config)
+        lq = printer.leviq
+        seen = []
+        orig_run = lq._run
+        def run(script):
+            if not seen or seen[-1] != lq.phase:
+                seen.append(lq.phase)
+            return orig_run(script)
+        lq._run = run
+        printer.run(line)
+        return seen, lq.get_status(0)['phase']
+
+    def test_leviq_reports_each_stage_and_clears_at_the_end(self):
+        seen, after = self.phases_during("LEVIQ")
+        self.assertEqual(seen, ['heating', 'wiping', 'cooling', 'homing', 'mesh'])
+        self.assertEqual(after, '')
+
+    def test_auto_zoffset_reports_cooling_then_measuring(self):
+        seen, after = self.phases_during("LEVIQ_AUTO_ZOFFSET FORCE=1")
+        self.assertEqual(seen[:2], ['cooling', 'zoffset'])
+        self.assertEqual(after, '')
+
+    def test_phase_is_idle_before_any_command(self):
+        printer = Printer(self.state_file, auto_zoffset_on_off=1)
+        self.assertEqual(printer.leviq.get_status(0)['phase'], '')
+
+
+class ShaperCalcPriorityTests(unittest.TestCase):
+    """The shaper fit runs in a child process; only the child drops to nice 19."""
+
+    def fake_module(self):
+        import multiprocessing
+
+        class ShaperCalibrate:
+            def __init__(self, in_process=False):
+                self.in_process = in_process
+
+            # Same shape as klippy/extras/shaper_calibrate.py: the method runs
+            # in a forked child and its result comes back through a pipe
+            def background_process_exec(self, method, args):
+                if self.in_process:
+                    return method(*args)
+                parent_conn, child_conn = multiprocessing.Pipe()
+                def wrapper():
+                    child_conn.send(method(*args))
+                    child_conn.close()
+                proc = multiprocessing.get_context('fork').Process(target=wrapper)
+                proc.start()
+                res = parent_conn.recv()
+                proc.join()
+                return res
+
+        return type('shaper_calibrate', (), {'ShaperCalibrate': ShaperCalibrate})
+
+    def test_child_runs_at_lowest_priority_parent_keeps_its_own(self):
+        mod = self.fake_module()
+        leviq3.lower_shaper_calc_priority(mod)
+        before = os.nice(0)
+        child_nice, value = mod.ShaperCalibrate().background_process_exec(
+            lambda a, b: (os.nice(0), a + b), (2, 3))
+        self.assertEqual(child_nice, 19)
+        self.assertEqual(value, 5)
+        self.assertEqual(os.nice(0), before)
+
+    def test_in_process_call_does_not_change_priority(self):
+        mod = self.fake_module()
+        leviq3.lower_shaper_calc_priority(mod)
+        before = os.nice(0)
+        self.assertEqual(mod.ShaperCalibrate(in_process=True).background_process_exec(
+            lambda: os.nice(0), ()), before)
+        self.assertEqual(os.nice(0), before)
+
+    def test_patch_is_applied_once(self):
+        mod = self.fake_module()
+        leviq3.lower_shaper_calc_priority(mod)
+        patched = mod.ShaperCalibrate.background_process_exec
+        leviq3.lower_shaper_calc_priority(mod)
+        self.assertIs(mod.ShaperCalibrate.background_process_exec, patched)
+
+
 if __name__ == '__main__':
     unittest.main()

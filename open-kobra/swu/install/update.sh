@@ -40,6 +40,16 @@ log_msg() {
     fi
 }
 
+# The stock firmware has no cmp (Rinkhals brings it once it has booted); the
+# all-in-one package runs this installer before that first boot.
+if ! command -v cmp >/dev/null 2>&1; then
+    cmp() {
+        [ "$1" = "-s" ] && shift
+        [ -f "$1" ] && [ -f "$2" ] || return 2
+        [ "$(md5sum < "$1")" = "$(md5sum < "$2")" ]
+    }
+fi
+
 file_has_exact_line() {
     F_PATH="$1"
     F_NEED="$2"

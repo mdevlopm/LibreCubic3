@@ -404,7 +404,14 @@ STRINGS = {
     "Tabla boş ve temiz olmalı. Nozul ve tabla ısınacak, nozul silinecek ve tabla ağı ölçülecek. Birkaç dakika sürer.": (
         "Tabla boş ve temiz olmalı. Nozul ve tabla ısınacak, nozul silinecek ve tabla ağı ölçülecek. Birkaç dakika sürer."
     ),
-    "LeviQ çalışıyor.": "LeviQ çalışıyor.",
+    "Nozul ısınıp silinecek, 140°C'ye soğuyacak ve tabla 25 noktada ölçülecek.": "Nozul ısınıp silinecek, 140°C'ye soğuyacak ve tabla 25 noktada ölçülecek.",
+    "Tabla ısınıyor: %.0f°C / %.0f°C": "Tabla ısınıyor: %.0f°C / %.0f°C",
+    "Isıtılıyor": "Isıtılıyor",
+    "Nozul siliniyor": "Nozul siliniyor",
+    "Nozul soğutuluyor": "Nozul soğutuluyor",
+    "Z ekseni sıfırlanıyor": "Z ekseni sıfırlanıyor",
+    "Tabla ağı ölçülüyor": "Tabla ağı ölçülüyor",
+    "Z-offset ölçülüyor": "Z-offset ölçülüyor",
     "Tabla ağı ölçüldü.": "Tabla ağı ölçüldü.",
     "Tabla boş ve temiz, nozul ucu temiz olmalı. Nozul tablaya dokunarak sıfır noktasını ölçecek.": (
         "Tabla boş ve temiz, nozul ucu temiz olmalı. Nozul tablaya dokunarak sıfır noktasını ölçecek."

@@ -23,6 +23,7 @@ class Step:
     actions: tuple = ()  # ((label, gcode), ...) extra buttons
     choices: tuple = ()  # ((label, {param: value}), ...) picking one moves on
     repeat_from: int = None  # offers "Tekrarla", jumping back to this step
+    auto: bool = False  # a finished `wait` moves on to the next step by itself
 
 
 @dataclass
@@ -69,6 +70,27 @@ def bed_and_nozzle(bed_target, nozzle_target):
     return wait
 
 
+def leviq_phase_text(app):
+    """What a running LEVIQ* command is doing (leviq3 status `phase`), "Çalışıyor..." for anything else."""
+    phase = app.get("leviq3", "phase", "")
+    if phase == "heating":
+        bed, bed_target = app.get("heater_bed", "temperature"), app.get("heater_bed", "target") or 0
+        if bed_target > 0 and bed < bed_target - 2:
+            return app.tr("Tabla ısınıyor: %.0f°C / %.0f°C") % (bed, bed_target)
+        return app.tr("Isıtılıyor")
+    if phase == "wiping":
+        return app.tr("Nozul siliniyor")
+    if phase == "cooling":
+        return app.tr("Nozul soğutuluyor")
+    if phase == "homing":
+        return app.tr("Z ekseni sıfırlanıyor")
+    if phase == "mesh":
+        return app.tr("Tabla ağı ölçülüyor")
+    if phase == "zoffset":
+        return app.tr("Z-offset ölçülüyor")
+    return app.tr("Çalışıyor...")
+
+
 HEAT_OFF = "M104 S0\nM106 S0"
 PUSH = "M83\nG1 E10 F150\nM82"
 # open_kobra_homing.cfg: home only if needed, then park over the purge chute so a hot nozzle never oozes on the bed
@@ -108,14 +130,15 @@ WIZARDS = {wizard.key: wizard for wizard in (
         # Home while the nozzle is still cold: Z homes by nozzle contact, a hot unwiped nozzle oozes onto the bed
         Step("Isıtma", "Eksenler sıfırlanıyor, nozul 170°C'ye ısıtılıyor.", enter=PARK + "\nM104 S170",
              wait=lambda app, params: (
-                 nozzle(app) >= 168, min(1.0, nozzle(app) / 170.0), "%.0f°C / 170°C" % nozzle(app))),
+                 nozzle(app) >= 168, min(1.0, nozzle(app) / 170.0), "%.0f°C / 170°C" % nozzle(app)), auto=True),
         Step("Silme", "Nozul siliniyor.", enter="NOZZLE_WIPE_SEQUENCE", blocking=True),
         Step("Bitti", "Isıtıcı kapatıldı.", enter="M104 S0"),
     ), cancel=HEAT_OFF),
     Wizard("level", "Tabla seviyele", "level", (
         Step("Hazırlık", "Tabla boş ve temiz olmalı. Nozul ve tabla ısınacak, nozul silinecek ve tabla "
                          "ağı ölçülecek. Birkaç dakika sürer."),
-        Step("Seviyeleme", "LeviQ çalışıyor.", enter="G28\nLEVIQ", blocking=True),
+        Step("Ölçüm", "Nozul ısınıp silinecek, 140°C'ye soğuyacak ve tabla 25 noktada ölçülecek.",
+             enter="G28\nLEVIQ", blocking=True),
         Step("Bitti", "Tabla ağı ölçüldü.", enter="M104 S0\nM140 S0"),
     ), cancel="M104 S0\nM140 S0"),
     # Same conditions as printing: bed at 60°C, nozzle wiped (LEVIQ_WIPING cools it to 140°C and re-homes Z).
@@ -125,7 +148,7 @@ WIZARDS = {wizard.key: wizard for wizard in (
                          "z-offset ölçülecek."),
         # Heat over the purge chute: LEVIQ_WIPING wipes, cools to 140°C and homes Z itself
         Step("Isıtma", "Eksenler sıfırlanıyor, tabla ve nozul ısıtılıyor.", enter=PARK + "\nM140 S60\nM104 S170",
-             wait=bed_and_nozzle(60, 170)),
+             wait=bed_and_nozzle(60, 170), auto=True),
         Step("Ölçüm", "Nozul siliniyor ve z-offset ölçülüyor.",
              enter="LEVIQ_WIPING\nLEVIQ_AUTO_ZOFFSET FORCE=1", blocking=True),
         Step("Bitti", "Yeni z-offset kaydedildi. Isıtıcılar kapatıldı.", enter="M104 S0\nM140 S0"),
@@ -233,7 +256,7 @@ class Run:
             if target > 0 and abs(temp - target) > 3:
                 text = app.tr("Nozul ısınıyor: %.0f°C / %.0f°C") if temp < target else app.tr("Nozul soğuyor: %.0f°C / %.0f°C")
                 return False, None, text % (temp, target)
-            return False, None, app.tr("Çalışıyor...")
+            return False, None, leviq_phase_text(app)
         if step.wait:
             return step.wait(app, self.params)
         return True, None, ""

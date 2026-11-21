@@ -56,9 +56,8 @@ The package never writes to Anycubic's stock files; it only adds files to the Ri
 **Required:**
 
 - **Anycubic Kobra 3** (or Kobra 3 Combo). The installer checks the model and stops without touching anything on other printers.
-- **Rinkhals** installed and running: <https://github.com/jbatonnet/Rinkhals>
-- The **vanilla-klipper app with ACE Pro support** from [Kobra-S1/vanilla-klipper-swu](https://github.com/Kobra-S1/vanilla-klipper-swu). It is a separate project and is not bundled here; see step 1 below.
-- Rinkhals' **Moonraker** app (`40-moonraker`). It ships with Rinkhals.
+- **Rinkhals** ([rinkhals-community/Rinkhals](https://github.com/rinkhals-community/Rinkhals)), the **vanilla-klipper app with ACE Pro support** ([Kobra-S1/vanilla-klipper-swu](https://github.com/Kobra-S1/vanilla-klipper-swu)) and Rinkhals' **Moonraker** app. The **all-in-one package** installs all of them; the regular package needs them installed first.
+- For the all-in-one package: stock firmware **2.4.6.7**. It refuses other versions without changing anything.
 - A USB stick formatted **FAT32** with an **MBR** partition table (GPT does not work).
 - At least 10 MB free on the printer.
 
@@ -72,9 +71,26 @@ The package never writes to Anycubic's stock files; it only adds files to the Ri
 
 ## Installation (USB)
 
-The printer reads one `update.swu` per USB insertion, so installation takes two rounds.
+There are two packages on the [Releases](../../releases) page:
 
-### 1. Install vanilla-klipper (skip if already installed)
+- **`LibreCubic3-<version>-all-in-one.zip`**: for a Kobra 3 on stock firmware 2.4.6.7. One USB stick installs Rinkhals, vanilla-klipper and LibreCubic3.
+- **`LibreCubic3-<version>-install.zip`**: if Rinkhals and vanilla-klipper are already installed, or to update LibreCubic3.
+
+### All-in-one (stock printer)
+
+1. Download **`LibreCubic3-<version>-all-in-one.zip`** and unzip it to the **root** of the USB stick. It must contain `aGVscF9zb3Nf/update.swu`.
+2. Insert the USB stick while the printer is on. **Do not turn the printer off** until it restarts by itself (about 5 minutes).
+   - First beep: started. The Rinkhals progress bar appears on the screen, then the printer restarts once.
+   - **3 short beeps without a restart:** nothing was changed (not a Kobra 3, firmware is not 2.4.6.7, damaged download or not enough space). The reason is in `aGVscF9zb3Nf/open-kobra-bundle-install.log` on the stick.
+3. After the restart the LibreCubic3 touchscreen UI starts. If an ACE Pro was connected during installation it is already enabled; otherwise see step 5 of the vanilla-klipper part below.
+
+What it installs: Rinkhals 20261101_01, vanilla-klipper 2026-06-01 (0.3) and this LibreCubic3 version, with kobra-screen and vanilla-klipper enabled. If the same Rinkhals is already installed it is skipped. Log: `/useremain/open-kobra-bundle-install.log` and on the stick.
+
+### Step by step (Rinkhals already installed)
+
+The printer reads one `update.swu` per USB insertion, so this takes two rounds.
+
+#### 1. Install vanilla-klipper (skip if already installed)
 
 1. Download **`app-vanilla-klipper-k2p-k3.swu`** from the newest folder under [Kobra-S1/vanilla-klipper-swu → releases](https://github.com/Kobra-S1/vanilla-klipper-swu/tree/main/releases).
 2. On the USB stick, create a folder named `aGVscF9zb3Nf` and copy the file into it renamed to **`update.swu`** (`aGVscF9zb3Nf/update.swu`).
@@ -84,7 +100,7 @@ The printer reads one `update.swu` per USB insertion, so installation takes two 
 
 Details: [vanilla-klipper installation guide](https://github.com/Kobra-S1/vanilla-klipper-swu/blob/main/vanilla-klipper.md).
 
-### 2. Install LibreCubic3
+#### 2. Install LibreCubic3
 
 1. Download **`LibreCubic3-<version>-install.zip`** from [Releases](../../releases).
 2. Delete the old `aGVscF9zb3Nf` folder from the USB stick, then unzip the file to the **root** of the stick. It must contain `aGVscF9zb3Nf/update.swu`.
@@ -104,7 +120,7 @@ To update, repeat step 2 with the new version's zip. Your settings are kept.
 1. Delete the old `aGVscF9zb3Nf` folder from the USB stick.
 2. Unzip **`LibreCubic3-<version>-uninstall.zip`** to the root of the stick, insert it and wait for the second beep.
 
-Uninstalling does not delete your `printer.klipper.cfg`; saved settings such as Z-offset, bed mesh and PID stay.
+Uninstalling does not delete your `printer.klipper.cfg`; saved settings such as Z-offset, bed mesh and PID stay. It removes LibreCubic3 only: Rinkhals and vanilla-klipper (also when installed by the all-in-one package) stay; see their own projects to remove them.
 
 ## If something goes wrong
 
@@ -122,6 +138,8 @@ cd open-kobra
 ```
 
 The result is `open-kobra/dist/install/aGVscF9zb3Nf/update.swu`; copy that folder to the root of the USB stick.
+
+The all-in-one package: put Rinkhals' `update-k2p-k3.swu` (20261101_01) and vanilla-klipper's `app-vanilla-klipper-k2p-k3.swu` (2026-06-01) into `open-kobra/vendor/bundle/` (download links and SHA-256 at the top of `build_bundle.sh`), then run `./build_bundle.sh`. `./test_bundle.sh` runs the real Rinkhals, vanilla-klipper and LibreCubic3 installers on a simulated stock printer (needs `bwrap`).
 
 Tests:
 

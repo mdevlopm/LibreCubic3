@@ -64,6 +64,10 @@ class LeviQ3:
         self.cfg_z_offset = 0.
         self.offered_z_offset = None
         self._zeroed_for_leveling = False
+        # What a running LEVIQ* command is doing, for the touchscreen:
+        # heating, wiping, cooling, homing, mesh or zoffset; '' when idle
+        self.phase = ''
+        self._command_depth = 0
         # fingerprints of the bed_mesh profiles the config file holds
         self.mesh_cfg_fps = {}
         self.probe = self.cs1237 = None
@@ -88,7 +92,19 @@ class LeviQ3:
                 ('LEVIQ_AUTO_ZOFFSET_ON_OFF',
                  self.cmd_LEVIQ_AUTO_ZOFFSET_ON_OFF,
                  self.cmd_LEVIQ_AUTO_ZOFFSET_ON_OFF_help)):
-            self.gcode.register_command(name, func, desc=desc)
+            self.gcode.register_command(name, self._tracked(func), desc=desc)
+
+    def _tracked(self, func):
+        # The phase is cleared when the outermost LEVIQ* command returns
+        def run(gcmd):
+            self._command_depth += 1
+            try:
+                return func(gcmd)
+            finally:
+                self._command_depth -= 1
+                if not self._command_depth:
+                    self.phase = ''
+        return run
 
     def _handle_connect(self):
         self.probe = (self.printer.lookup_object('probe', None)
@@ -143,7 +159,8 @@ class LeviQ3:
     def get_status(self, eventtime):
         return {'z_offset': self._get_zoffset() if self.probe else 0.,
                 'temp_comp': self.temp_comp,
-                'auto_zoffset_on_off': self.auto_zoffset_on_off}
+                'auto_zoffset_on_off': self.auto_zoffset_on_off,
+                'phase': self.phase}
 
     # Saved state (the stock firmware keeps these in printer_mutable.cfg)
     def _load_state(self):
@@ -543,6 +560,7 @@ class LeviQ3:
     def _cool_to_end_temp(self):
         # The part fan speeds up the wait for extru_end_temp from ~2-5 min to
         # well under a minute; probing itself runs with the fan off (M107).
+        self.phase = 'cooling'
         self._run("M106 S255")
         self._run("M109 S%f" % (self.extru_end_temp,))
         self._run("M107")
@@ -568,6 +586,7 @@ class LeviQ3:
             self._run("G28 Z")
             return
         calibrated = True
+        self.phase = 'zoffset'
         consistent, z_offset = self._measure_pair(gcmd, orig, orig_comp)
         if not consistent:
             consistent, z_offset = self._measure_pair(gcmd, orig, orig_comp)
@@ -585,10 +604,13 @@ class LeviQ3:
                 self._run("G1 X%f Y%f F9600"
                           % tuple(self.platform_offset_extru[:2]))
                 self._run("M400")
+                self.phase = 'heating'
                 self._run("M109 S%f" % (self.extru_temp,))
+                self.phase = 'wiping'
                 if self.rewipe_gcode:
                     self._run(self.rewipe_gcode)
                 self._cool_to_end_temp()
+                self.phase = 'zoffset'
                 if not self._measure_pair(gcmd, orig, orig_comp)[0]:
                     self._restore_orig(orig, orig_comp)
                     calibrated = False
@@ -652,6 +674,7 @@ class LeviQ3:
         self.bed_temp = gcmd.get_float('B', 60.)
         self.extru_temp = gcmd.get_float('S', 170.)
         self.extru_end_temp = gcmd.get_float('E', self.extru_end_temp)
+        self.phase = 'heating'
         self._snapshot_zoffset()
         self._set_zero()
         try:
@@ -682,12 +705,14 @@ class LeviQ3:
     cmd_LEVIQ_WIPING_help = "Automatic leveling function wiping"
     def cmd_LEVIQ_WIPING(self, gcmd):
         try:
+            self.phase = 'wiping'
             if self.wipe_gcode:
                 self._run(self.wipe_gcode)
             self._run("M400")
             self._run("BED_MESH_CLEAR")
             self._cool_to_end_temp()
             self._run("M190 S%f" % (self.bed_temp,))
+            self.phase = 'homing'
             self._run("G28 Z")
             self._run("M400")
             self._run("G4 P1000")
@@ -699,6 +724,7 @@ class LeviQ3:
     cmd_LEVIQ_PROBE_help = "Automatic leveling function probe"
     def cmd_LEVIQ_PROBE(self, gcmd):
         meshed = False
+        self.phase = 'mesh'
         try:
             if self.mesh_gcode:
                 self._run(self.mesh_gcode)
@@ -730,5 +756,36 @@ class LeviQ3:
             raise
 
 
+# SHAPER_CALIBRATE fits the shapers in a child process (ShaperCalibrate.
+# background_process_exec) that inherits Klipper's nice -20.  On the single
+# core of the Kobra 3 that is about 37 s of CPU per axis during which
+# Moonraker and the touchscreen (nice 0) get almost nothing: every status
+# query times out and the screen freezes.  The child drops to the lowest
+# priority; Klipper itself keeps its own.
+def lower_shaper_calc_priority(shaper_calibrate):
+    cls = shaper_calibrate.ShaperCalibrate
+    orig = cls.background_process_exec
+    if getattr(orig, 'leviq3_niced', False):
+        return
+    def background_process_exec(self, method, args):
+        parent = os.getpid()
+        def niced(*margs):
+            if os.getpid() != parent:
+                try:
+                    os.nice(19 - os.nice(0))
+                except OSError:
+                    pass
+            return method(*margs)
+        return orig(self, niced, args)
+    background_process_exec.leviq3_niced = True
+    cls.background_process_exec = background_process_exec
+
+
 def load_config(config):
+    try:
+        from . import shaper_calibrate
+    except ImportError:
+        pass    # tests import this file outside klippy.extras
+    else:
+        lower_shaper_calc_priority(shaper_calibrate)
     return LeviQ3(config)
