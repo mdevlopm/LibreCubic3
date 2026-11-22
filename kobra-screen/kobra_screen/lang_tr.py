@@ -447,6 +447,7 @@ STRINGS = {
     "Nozul soğuyor: %.0f°C / %.0f°C": "Nozul soğuyor: %.0f°C / %.0f°C",
     "Hangi ısıtıcı ayarlansın?": "Hangi ısıtıcı ayarlansın?",
     "Nozul 220°": "Nozul 220°",
+    "Nozul 230°": "Nozul 230°",
     "Tabla 60°": "Tabla 60°",
     "PID ayarı yapılıyor. Birkaç dakika sürer, yazıcıya dokunma.": (
         "PID ayarı yapılıyor. Birkaç dakika sürer, yazıcıya dokunma."
@@ -870,6 +871,7 @@ STRINGS = {
     'Değiştirmek için yuvaya dokun.': 'Değiştirmek için yuvaya dokun.',
     'Elle seçim var.': 'Elle seçim var.',
     'Otomatik': 'Otomatik',
+    'Otomatik yuva eşleştirme: %s': 'Otomatik yuva eşleştirme: %s',
 }
 
 ERROR_PATTERNS = ()

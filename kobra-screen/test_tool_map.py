@@ -273,5 +273,91 @@ class PrintScreenToolMapTests(unittest.TestCase):
         self.assertEqual(app.print_tool_plan("box.gcode")[0]["slot"], 3)
 
 
+class AutoPlanTests(unittest.TestCase):
+    """Upload-and-print auto_plan / needs_auto_map / format_summary helpers."""
+
+    def test_direct_slots_ready_returns_none(self):
+        # Even if slot 3 has a closer colour, slot 0 already holds PLA -> no auto-mapping needed.
+        slots = [slot(0, "PLA", (255, 255, 255)), slot(3, "PLA", (0, 193, 174))]
+        self.assertFalse(tool_map.needs_auto_map(TEST_META, slots))
+        self.assertIsNone(tool_map.auto_plan(TEST_META, slots))
+
+    def test_family_match_in_direct_slot_returns_none(self):
+        slots = [slot(0, "PLA+"), slot(1, "PLA")]
+        meta = {"referenced_tools": [0], "filament_type": "PLA"}
+        self.assertFalse(tool_map.needs_auto_map(meta, slots))
+        self.assertIsNone(tool_map.auto_plan(meta, slots))
+
+    def test_unknown_material_in_direct_slot_returns_none(self):
+        slots = [slot(0, "Unknown"), slot(3, "PLA")]
+        meta = {"referenced_tools": [0], "filament_type": "PLA"}
+        self.assertFalse(tool_map.needs_auto_map(meta, slots))
+        self.assertIsNone(tool_map.auto_plan(meta, slots))
+
+    def test_empty_slot_uses_same_plan_logic(self):
+        entries = tool_map.auto_plan(TEST_META, TEST_SLOTS)
+        self.assertIsNotNone(entries)
+        self.assertEqual(slots_of(entries), {0: 3})
+        self.assertEqual(tool_map.format_summary(entries), "T0→4")
+
+    def test_material_mismatch_remaps_to_matching_slot(self):
+        slots = [slot(0, "PETG"), slot(1, status="empty"), slot(2, "PLA")]
+        meta = {"referenced_tools": [0, 1], "filament_type": "PLA;PETG"}
+        entries = tool_map.auto_plan(meta, slots)
+        self.assertEqual(slots_of(entries), {0: 2, 1: 0})
+        self.assertEqual(tool_map.format_summary(entries), "T0→3, T1→1")
+
+    def test_insufficient_slots_returns_none(self):
+        meta = dict(TEST_META, filament_type="ABS")
+        self.assertTrue(tool_map.needs_auto_map(meta, TEST_SLOTS))
+        self.assertIsNone(tool_map.auto_plan(meta, TEST_SLOTS))
+
+
+class AutoMapNoticeTests(unittest.TestCase):
+    def test_console_auto_map_line_notifies_and_logs_once(self):
+        class StoreClient(FakeClient):
+            def __init__(self, entries):
+                super().__init__()
+                self._entries = entries
+
+            def gcode_store(self, count=20):
+                return {"gcode_store": list(self._entries)}
+
+        now = 1700000100.0
+        entries = [{"type": "response", "time": now + 1.0,
+                    "message": "// ACE: Otomatik yuva eşleştirme: T0→3, T1→1"}]
+        tmp = tempfile.TemporaryDirectory()
+        app = App(StoreClient(entries), cache_dir=tmp.name, rinkhals_home=tmp.name, lang="tr",
+                  wall_clock_fn=lambda: now, run_async=lambda fn: fn(), run_urgent=lambda fn: fn())
+        app._sync_gcode_errors()
+        self.assertEqual(app.message, "Otomatik yuva eşleştirme: T0→3, T1→1")
+        # Duplicate poll must not re-log or re-notify
+        app.message = ""
+        app._sync_gcode_errors()
+        self.assertEqual(app.message, "")
+        logged = [e for e in app.event_log if "Otomatik yuva eşleştirme" in e.get("message", "")]
+        self.assertEqual(len(logged), 1)
+        tmp.cleanup()
+
+    def test_console_auto_map_line_translates_in_english(self):
+        class StoreClient(FakeClient):
+            def __init__(self, entries):
+                super().__init__()
+                self._entries = entries
+
+            def gcode_store(self, count=20):
+                return {"gcode_store": list(self._entries)}
+
+        now = 1700000100.0
+        entries = [{"type": "response", "time": now + 1.0,
+                    "message": "// ACE: Otomatik yuva eşleştirme: T0→3, T1→1"}]
+        tmp = tempfile.TemporaryDirectory()
+        app = App(StoreClient(entries), cache_dir=tmp.name, rinkhals_home=tmp.name, lang="en",
+                  wall_clock_fn=lambda: now, run_async=lambda fn: fn(), run_urgent=lambda fn: fn())
+        app._sync_gcode_errors()
+        self.assertEqual(app.message, "Auto slot mapping: T0→3, T1→1")
+        tmp.cleanup()
+
+
 if __name__ == "__main__":
     unittest.main()

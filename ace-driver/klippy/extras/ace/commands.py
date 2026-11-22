@@ -1525,6 +1525,8 @@ def cmd_ACE_CHANGE_TOOL(manager, gcmd, tool_index):
 
     requested_tool = tool_index  # the file's tool: Retry must go through the tool map again
     if tool_index >= 0:
+        if hasattr(manager, "ensure_auto_tool_map"):
+            manager.ensure_auto_tool_map(gcmd)
         mapped = manager.map_tool(tool_index)
         if mapped != tool_index:
             gcmd.respond_info(f"ACE: T{tool_index} -> T{mapped} (slot {mapped + 1}, tool map)")

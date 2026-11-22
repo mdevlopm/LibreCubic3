@@ -95,6 +95,8 @@ HEAT_OFF = "M104 S0\nM106 S0"
 PUSH = "M83\nG1 E10 F150\nM82"
 # open_kobra_homing.cfg: home only if needed, then park over the purge chute so a hot nozzle never oozes on the bed
 PARK = "_OK_PARK_PURGE"
+# Stock PID park geometry: X278 over the chute, Y127 bed centered, Z>=15 (>=5, never lowered)
+PID_PARK = PARK + "\nG90\nG1 Y127 F9600\nM400"
 
 WIZARDS = {wizard.key: wizard for wizard in (
     Wizard("cold_pull", "Cold pull", "heal", (
@@ -116,13 +118,15 @@ WIZARDS = {wizard.key: wizard for wizard in (
         Step("Isıtma", "Nozul {hot}°'ye ısıtılıyor.", enter=PARK + "\nM104 S{hot}", wait=heated("hot")),
         Step("Yükle", "Filamenti ekstrudere tak ve nozuldan yeni renk temiz akana kadar sür.",
              actions=(("10 mm sür", PUSH), ("50 mm sür", "M83\nG1 E50 F240\nM82"))),
-        # Pull the melt back a little so the nozzle does not keep oozing
-        Step("Bitti", "Nozul ucunu temizle. Isıtıcı kapatıldı.", enter="_OK_RETRACT_IF_HOT LENGTH=3\nM104 S0"),
+        # Pull the melt back, cool the blob with the part fan, then throw it down the chute
+        Step("Bitti", "Nozul ucunu temizle. Isıtıcı kapatıldı.",
+             enter="_OK_RETRACT_IF_HOT LENGTH=3\nM400\nM104 S0\nM106 S255\nG4 P2000\nFLUSH_POOP\nM106 S0"),
     ), cancel=HEAT_OFF),
     Wizard("unload", "Filament çıkar", "unload", (
         Step("Malzeme", "Nozulda hangi filament var?", choices=MATERIAL_CHOICES),
         Step("Isıtma", "Nozul {hot}°'ye ısıtılıyor.", enter=PARK + "\nM104 S{hot}", wait=heated("hot")),
-        Step("Çıkar", "Filament geri çekiliyor.", enter="M83\nG1 E5 F200\nG1 E-80 F1500\nM82", blocking=True),
+        Step("Çıkar", "Filament geri çekiliyor.",
+             enter="CUT_TIP\nM83\nG1 E5 F200\nG1 E-100 F300\nM400\nM82", blocking=True),
         Step("Bitti", "Filamenti ekstruderden al. Isıtıcı kapatıldı.", enter="M104 S0"),
     ), cancel=HEAT_OFF),
     Wizard("clean", "Nozul temizle", "clean", (
@@ -131,16 +135,20 @@ WIZARDS = {wizard.key: wizard for wizard in (
         Step("Isıtma", "Eksenler sıfırlanıyor, nozul 170°C'ye ısıtılıyor.", enter=PARK + "\nM104 S170",
              wait=lambda app, params: (
                  nozzle(app) >= 168, min(1.0, nozzle(app) / 170.0), "%.0f°C / 170°C" % nozzle(app)), auto=True),
-        Step("Silme", "Nozul siliniyor.", enter="NOZZLE_WIPE_SEQUENCE", blocking=True),
-        Step("Bitti", "Isıtıcı kapatıldı.", enter="M104 S0"),
+        Step("Silme", "Nozul siliniyor.",
+             enter="_OK_RETRACT_IF_HOT LENGTH=10\nNOZZLE_WIPE_SEQUENCE", blocking=True),
+        Step("Bitti", "Isıtıcı kapatıldı.", enter=HEAT_OFF),
     ), cancel=HEAT_OFF),
     Wizard("level", "Tabla seviyele", "level", (
         Step("Hazırlık", "Tabla boş ve temiz olmalı. Nozul ve tabla ısınacak, nozul silinecek ve tabla "
                          "ağı ölçülecek. Birkaç dakika sürer."),
+        # Park over the purge chute before heating so ooze never drips on the bed; cancellable while heating
+        Step("Isıtma", "Eksenler sıfırlanıyor, tabla ve nozul ısıtılıyor.", enter=PARK + "\nM140 S60\nM104 S170",
+             wait=bed_and_nozzle(60, 170), auto=True),
         Step("Ölçüm", "Nozul ısınıp silinecek, 140°C'ye soğuyacak ve tabla 25 noktada ölçülecek.",
-             enter="G28\nLEVIQ", blocking=True),
+             enter="LEVIQ", blocking=True),
         Step("Bitti", "Tabla ağı ölçüldü.", enter="M104 S0\nM140 S0"),
-    ), cancel="M104 S0\nM140 S0"),
+    ), cancel="M104 S0\nM140 S0\nM106 S0"),
     # Same conditions as printing: bed at 60°C, nozzle wiped (LEVIQ_WIPING cools it to 140°C and re-homes Z).
     # FORCE=1 measures once without flipping the saved auto z-offset switch.
     Wizard("zoffset", "Z-offset ölç", "zoffset", (
@@ -150,13 +158,14 @@ WIZARDS = {wizard.key: wizard for wizard in (
         Step("Isıtma", "Eksenler sıfırlanıyor, tabla ve nozul ısıtılıyor.", enter=PARK + "\nM140 S60\nM104 S170",
              wait=bed_and_nozzle(60, 170), auto=True),
         Step("Ölçüm", "Nozul siliniyor ve z-offset ölçülüyor.",
-             enter="LEVIQ_WIPING\nLEVIQ_AUTO_ZOFFSET FORCE=1", blocking=True),
+             enter="_OK_RETRACT_IF_HOT LENGTH=10\nLEVIQ_WIPING\nLEVIQ_AUTO_ZOFFSET FORCE=1", blocking=True),
         Step("Bitti", "Yeni z-offset kaydedildi. Isıtıcılar kapatıldı.", enter="M104 S0\nM140 S0"),
     ), cancel="M104 S0\nM140 S0"),
     Wizard("pid", "PID ayarı", "chart", (
         Step("Isıtıcı", "Hangi ısıtıcı ayarlansın?", choices=(
-            ("Nozul 220°", {"heater": "extruder", "target": 220, "park": PARK + " RETRACT=3"}),
-            ("Tabla 60°", {"heater": "heater_bed", "target": 60, "park": ""}))),
+            ("Nozul 230°", {"heater": "extruder", "target": 230,
+                            "park": PID_PARK + "\nM109 S175\n_OK_RETRACT_IF_HOT LENGTH=5"}),
+            ("Tabla 60°", {"heater": "heater_bed", "target": 60, "park": PID_PARK}))),
         Step("Ayarlama", "PID ayarı yapılıyor. Birkaç dakika sürer, yazıcıya dokunma.",
              enter="{park}\nPID_CALIBRATE HEATER={heater} TARGET={target}", blocking=True),
         Step("Kaydet", "Sonuç kaydedilince Klipper yeniden başlar.", actions=(("Kaydet", "SAVE_CONFIG"),)),

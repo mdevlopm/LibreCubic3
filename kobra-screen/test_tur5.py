@@ -790,8 +790,12 @@ class LogicFixTests(AppCase):
 
     def test_d04_blocking_wizard_step_cannot_be_cancelled_and_keeps_the_printer_busy(self):
         self.app.start_wizard("level")
-        self.press("İleri")  # "Seviyeleme" step: blocking, G-code running
+        self.press("İleri")  # "Isıtma" step: non-blocking, cancellable while heating
         run = self.app.wizard
+        self.assertFalse(run.step.blocking)
+        self.assertIsNotNone(self.button("İptal").action)
+        run.goto(self.app, 2)  # "Ölçüm" step: blocking LEVIQ, G-code running
+        self.assertTrue(run.step.blocking)
         run.running = True
         self.assertIsNone(self.button("İptal").action)
         self.assertFalse(self.app.idle)
@@ -840,14 +844,15 @@ class LogicFixTests(AppCase):
         deadline = time.time() + 5
         while run.running and time.time() < deadline:
             time.sleep(0.01)
-        # now a failing blocking step
+        # now a failing blocking step (index 2: "Ölçüm" / LEVIQ)
         self.printer.fail_next_gcode = "Probe triggered prior to movement"
-        run.goto(self.app, 1)
+        run.goto(self.app, 2)
         deadline = time.time() + 5
         while run.running and time.time() < deadline:
             time.sleep(0.01)
+        self.assertTrue(run.step.blocking)
         self.assertTrue(run.failed)
-        self.assertEqual(self.printer.gcodes[-1], "M104 S0\nM140 S0")  # heaters switched off by the cancel script
+        self.assertEqual(self.printer.gcodes[-1], "M104 S0\nM140 S0\nM106 S0")  # heaters + fan switched off by cancel script
         self.app.end_wizard(cancelled=True)
 
         self.app.start_wizard("shaper")

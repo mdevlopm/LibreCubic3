@@ -36,6 +36,7 @@ from .health_monitor import ConnectionHealthMonitor
 from .toolchange import toolchange_in_progress_guard, ToolchangeOrchestrator
 from .toolchange_unload import ToolchangeUnloadHelper
 from .toolchange_spool import ToolchangeSpoolHelper
+from .auto_tool_map import AutoToolMapper
 
 
 class AceManager:
@@ -229,6 +230,7 @@ class AceManager:
         self._shared_bus_retry_min_delay = 2.0
         self._shared_bus_retry_max_delay = 15.0
         self._health_monitor = ConnectionHealthMonitor(self)
+        self._auto_tool_mapper = AutoToolMapper(self)
 
         # Register event handlers
         handler = self.printer.register_event_handler
@@ -751,28 +753,44 @@ class AceManager:
         self._tool_map = {int(k): int(v) for k, v in dict(mapping or {}).items()}
         self._tool_map_set_time = self.reactor.monotonic()
         self._tool_map_active = False
+        mapper = getattr(self, "_auto_tool_mapper", None)
+        if mapper is not None:
+            mapper.on_tool_map_set()
 
     def clear_tool_map(self):
         self._tool_map = {}
         self._tool_map_active = False
+        mapper = getattr(self, "_auto_tool_mapper", None)
+        if mapper is not None:
+            mapper.reset()
 
     def get_tool_map(self):
         return dict(getattr(self, "_tool_map", None) or {})
 
-    def update_tool_map_lifecycle(self):
+    def update_tool_map_lifecycle(self, prefetch=True):
         """Activate the map when a print runs; clear it when the print is over (2 s health tick)."""
-        if not getattr(self, "_tool_map", None):
-            return
-        if self._print_state() in ("printing", "paused"):
-            self._tool_map_active = True
-        elif self._tool_map_active:
-            self.clear_tool_map()
-        elif self.reactor.monotonic() - self._tool_map_set_time > self.TOOL_MAP_PENDING_S:
-            self.clear_tool_map()
+        if getattr(self, "_tool_map", None):
+            if self._print_state() in ("printing", "paused"):
+                self._tool_map_active = True
+            elif self._tool_map_active:
+                self.clear_tool_map()
+            elif self.reactor.monotonic() - self._tool_map_set_time > self.TOOL_MAP_PENDING_S:
+                self.clear_tool_map()
+        if prefetch:
+            mapper = getattr(self, "_auto_tool_mapper", None)
+            if mapper is not None:
+                mapper.on_lifecycle_tick()
+
+    def ensure_auto_tool_map(self, gcmd=None):
+        """Auto-select ACE slots for external prints before the first T<n> runs."""
+        mapper = getattr(self, "_auto_tool_mapper", None)
+        if mapper is None:
+            return None
+        return mapper.ensure_for_toolchange(gcmd)
 
     def map_tool(self, tool_index):
         """Physical tool for a file tool (unchanged when no map entry exists)."""
-        self.update_tool_map_lifecycle()
+        self.update_tool_map_lifecycle(prefetch=False)
         return self.get_tool_map().get(tool_index, tool_index)
 
     def update_rfid_print_mode(self):

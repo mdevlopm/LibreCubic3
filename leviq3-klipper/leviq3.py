@@ -560,8 +560,14 @@ class LeviQ3:
     def _cool_to_end_temp(self):
         # The part fan speeds up the wait for extru_end_temp from ~2-5 min to
         # well under a minute; probing itself runs with the fan off (M107).
+        # Skip the fan pulse when the nozzle is already at or below end_temp.
         self.phase = 'cooling'
-        self._run("M106 S255")
+        heater = self._active_heater()
+        temp = None
+        if heater is not None and hasattr(heater, 'get_status'):
+            temp = heater.get_status(self.reactor.monotonic()).get('temperature')
+        if temp is None or temp > self.extru_end_temp + 2.:
+            self._run("M106 S255")
         self._run("M109 S%f" % (self.extru_end_temp,))
         self._run("M107")
 
@@ -678,6 +684,17 @@ class LeviQ3:
         self._snapshot_zoffset()
         self._set_zero()
         try:
+            toolhead = self.printer.lookup_object('toolhead')
+            homed = toolhead.get_status(self.reactor.monotonic())['homed_axes']
+            if 'x' in homed and 'y' in homed:
+                # Park over the purge chute before heating so ooze never drips on
+                # the bed; only lift Z if below safe height (never lower Z).
+                self._run("G90")
+                if 'z' in homed and toolhead.get_position()[2] < 15.:
+                    self._run("G1 Z15.0 F4800")
+                self._run("G1 X%f Y%f F9600"
+                          % tuple(self.platform_offset_extru[:2]))
+                self._run("M400")
             self._run("M104 S%f" % (self.extru_temp,))
             self._run("M190 S%f" % (self.bed_temp,))
             if self.bed_soak_time:
@@ -690,13 +707,6 @@ class LeviQ3:
                 self._run("M82")
             self._run("G92 E0")
             self._run("M400")
-            toolhead = self.printer.lookup_object('toolhead')
-            homed = toolhead.get_status(self.reactor.monotonic())['homed_axes']
-            if 'x' in homed and 'y' in homed:
-                self._run("G90")
-                self._run("G1 X%f Y%f F9600"
-                          % tuple(self.platform_offset_extru[:2]))
-                self._run("M400")
         except Exception:
             if self.restore_zoffset:
                 self._restore_zoffset()

@@ -625,6 +625,56 @@ class LeviQ3Tests(unittest.TestCase):
         self.assertLess(fan_on, cooled)
         self.assertLess(fan_off, log.index("G28 Z", wipe))
 
+    def test_preheating_parks_before_heating_without_lowering_z(self):
+        # M05: when XY are homed, park at platform_offset_extru BEFORE M104/M190/M109,
+        # lifting Z to 15 only if below 15 (never lowering Z towards a part).
+        printer = self.printer(platform_offset_extru=(278., 260., 0.2))
+        gcode = printer.objects['gcode']
+        gcode.run_script_from_command("G28")  # leaves toolhead homed at Z=5
+        gcode.log.clear()
+        printer.run("LEVIQ_PREHEATING B=60 S=170")
+        log = gcode.log
+        park_idx = log.index("G1 X278.000000 Y260.000000 F9600")
+        lift_idx = log.index("G1 Z15.0 F4800")
+        self.assertLess(lift_idx, park_idx)
+        self.assertLess(park_idx, log.index("M104 S170.000000"))
+        self.assertLess(park_idx, log.index("M190 S60.000000"))
+        self.assertLess(park_idx, log.index("M109 S170.000000"))
+
+        # Already above Z=15 -> do NOT lower Z
+        gcode.run_script_from_command("G1 Z30")
+        gcode.log.clear()
+        printer.run("LEVIQ_PREHEATING B=60 S=170")
+        log = gcode.log
+        self.assertNotIn("G1 Z15.0 F4800", log)
+        self.assertLess(log.index("G1 X278.000000 Y260.000000 F9600"), log.index("M104 S170.000000"))
+
+        # Unhomed XY -> never move X/Y
+        printer.objects['toolhead'].homed = ''
+        gcode.log.clear()
+        printer.run("LEVIQ_PREHEATING B=60 S=170")
+        self.assertFalse(any("X278" in l for l in gcode.log))
+
+    def test_cool_to_end_temp_skips_fan_pulse_when_already_cool(self):
+        # M06: skip M106 S255 when nozzle is already <= extru_end_temp + 2
+        printer = self.printer(extru_end_temp=140.)
+        gcode = printer.objects['gcode']
+        heater = printer.objects['extruder'].heater
+
+        heater.target = 140.
+        gcode.log.clear()
+        printer.leviq._cool_to_end_temp()
+        self.assertNotIn("M106 S255", gcode.log)
+        self.assertIn("M109 S140.000000", gcode.log)
+        self.assertIn("M107", gcode.log)
+
+        heater.target = 170.
+        gcode.log.clear()
+        printer.leviq._cool_to_end_temp()
+        self.assertIn("M106 S255", gcode.log)
+        self.assertLess(gcode.log.index("M106 S255"), gcode.log.index("M109 S140.000000"))
+        self.assertLess(gcode.log.index("M109 S140.000000"), gcode.log.index("M107"))
+
     def test_leviq_preserves_measured_and_temp_offset_and_three_step_flow(self):
         printer = self.printer(wipe_gcode='MY_WIPE', mesh_gcode='MY_MESH')
         printer.run("LEVIQ_AUTO_ZOFFSET")

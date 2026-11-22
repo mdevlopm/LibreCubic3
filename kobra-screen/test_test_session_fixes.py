@@ -125,7 +125,7 @@ class WizardFixTests(unittest.TestCase):
         self.assertEqual(target, "60°C")
 
     def test_heating_wizards_park_before_heating(self):
-        for key in ("load", "unload", "cold_pull", "clean", "zoffset"):
+        for key in ("load", "unload", "cold_pull", "clean", "level", "zoffset"):
             heat = next(s for s in self._steps(key) if s.enter and "M104 S" in s.enter and "S0" not in s.enter)
             lines = heat.enter.split("\n")
             self.assertEqual(lines[0], wizards.PARK, key)
@@ -135,13 +135,21 @@ class WizardFixTests(unittest.TestCase):
         last = self._steps("load")[-1]
         self.assertTrue(last.enter.startswith("_OK_RETRACT_IF_HOT"))
 
-    def test_pid_parks_only_for_nozzle(self):
+    def test_pid_parks_both_heaters_and_hot_retracts_only_for_nozzle(self):
         step = self._steps("pid")[1]
         choices = dict(self._steps("pid")[0].choices)
-        nozzle = step.enter.format(**choices["Nozul 220°"])
-        bed = step.enter.format(**choices["Tabla 60°"])
-        self.assertTrue(nozzle.startswith("_OK_PARK_PURGE RETRACT=3\nPID_CALIBRATE HEATER=extruder"))
-        self.assertEqual(bed.strip().split("\n")[0], "PID_CALIBRATE HEATER=heater_bed TARGET=60")
+        nozzle = step.enter.format(**choices["Nozul 230°"]).splitlines()
+        bed = step.enter.format(**choices["Tabla 60°"]).splitlines()
+        # M07: nozzle parks over chute (X278, Y127), heats before hot-retracting, then tunes at 230°C
+        self.assertEqual(nozzle[0], wizards.PARK)
+        self.assertIn("G1 Y127 F9600", nozzle)
+        self.assertLess(nozzle.index("M109 S175"), nozzle.index("_OK_RETRACT_IF_HOT LENGTH=5"))
+        self.assertEqual(nozzle[-1], "PID_CALIBRATE HEATER=extruder TARGET=230")
+        # M07: bed PID also parks at X278 Y127 without heating or retracting the nozzle
+        self.assertEqual(bed[0], wizards.PARK)
+        self.assertIn("G1 Y127 F9600", bed)
+        self.assertFalse(any(l.startswith("M109") or l.startswith("_OK_RETRACT_IF_HOT") for l in bed))
+        self.assertEqual(bed[-1], "PID_CALIBRATE HEATER=heater_bed TARGET=60")
 
 
 if __name__ == "__main__":

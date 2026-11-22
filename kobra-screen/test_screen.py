@@ -243,12 +243,15 @@ class ScreenTests(unittest.TestCase):
 
     def test_wizard_blocking_step_and_failure(self):
         self.press("Araçlar", "Tabla seviyele")
+        self.press("İleri")  # Isıtma: park over purge chute before heating (non-blocking)
+        self.assertEqual(self.printer.gcodes[-1], "_OK_PARK_PURGE\nM140 S60\nM104 S170")
+        self.ticks(25)  # bed -> 60°C, nozzle -> 170°C
         self.printer.fail_next_gcode = "Probe triggered prior to movement"
-        self.press("İleri")
+        self.press("İleri")  # Ölçüm: blocking LEVIQ step
         self.assertIn("Probe triggered prior to movement", self.texts())
         self.assertFalse(self.enabled("İleri"))
         self.press("Yeniden dene")
-        self.assertEqual(self.printer.gcodes[-1], "G28\nLEVIQ")
+        self.assertEqual(self.printer.gcodes[-1], "LEVIQ")
         self.assertIn("Tamamlandı", self.texts())
         self.press("İleri", "Bitir")
         self.assertIsNone(self.app.wizard)

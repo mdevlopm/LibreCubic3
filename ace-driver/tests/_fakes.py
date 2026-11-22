@@ -359,11 +359,17 @@ class FakePin:
 
 
 class FakePrintStats:
-    def __init__(self, state="standby"):
+    def __init__(self, state="standby", filename="", total_duration=0.0):
         self.state = state
+        self.filename = filename
+        self.total_duration = total_duration
 
     def get_status(self, eventtime):
-        return {"state": self.state}
+        return {
+            "state": self.state,
+            "filename": self.filename,
+            "total_duration": self.total_duration,
+        }
 
 
 class KlipperShutdown(Exception):

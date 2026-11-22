@@ -13,6 +13,8 @@ from .app_models import (
 from .moonraker import MoonrakerError
 from .prompts import PromptDialog
 
+_AUTO_TOOL_MAP_PREFIX = "ACE: Otomatik yuva eşleştirme:"
+
 
 class _AppPollingMixin:
     def temperature_series(self, sensor, points=60):
@@ -408,6 +410,7 @@ class _AppPollingMixin:
             return []
         new_errs = []
         new_infos = []
+        new_auto_maps = []
         toolchange_deductions = []
         curr_prompt_keys = []
         curr_prompt_items = []
@@ -443,8 +446,14 @@ class _AppPollingMixin:
                     continue
                 if msg.startswith("!!"):
                     kind, clean = "error", msg[2:].strip()
-                elif msg.startswith("//") and msg[2:].strip().startswith("ACE["):
-                    kind, clean = "info", msg[2:].strip()
+                elif msg.startswith("//"):
+                    body = msg[2:].strip()
+                    if body.startswith("ACE["):
+                        kind, clean = "info", body
+                    elif body.startswith(_AUTO_TOOL_MAP_PREFIX):
+                        kind, clean = "auto_map", body
+                    else:
+                        continue
                 else:
                     continue
                 if not clean:
@@ -463,6 +472,12 @@ class _AppPollingMixin:
                     new_errs.append((clean, item_ts or self._wall_clock()))
                     if answers and pend_err is None:
                         pend_err = clean
+                elif kind == "auto_map":
+                    summary = clean[len(_AUTO_TOOL_MAP_PREFIX):].strip()
+                    ts_val = item_ts or self._wall_clock()
+                    display = self.tr("Otomatik yuva eşleştirme: %s") % summary if summary else clean
+                    new_infos.append((display, ts_val))
+                    new_auto_maps.append((display, ts_val))
                 else:
                     if answers and pend_info is None:
                         pend_info = clean
@@ -538,6 +553,10 @@ class _AppPollingMixin:
             if fresh:
                 self.notify(self.tr_error(fresh[-1][0]), 6, "outline_danger", record=False)
                 self.trigger_beep("error")
+            else:
+                fresh_maps = [(c, t) for c, t in new_auto_maps if t >= self._app_start_wall - 1.0]
+                if fresh_maps:
+                    self.notify(fresh_maps[-1][0], 5, "active", record=False)
         return new_errs
 
     def load_metadata(self, filename):

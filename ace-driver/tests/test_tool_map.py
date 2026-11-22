@@ -163,5 +163,238 @@ class RetryUsesFileToolTests(unittest.TestCase):
         self.assertIn("PAUSE", printer.gcode.scripts)
 
 
+def _set_slots(mgr, specs):
+    """Populate instance 0 inventory from [(status, material, color), ...]."""
+    inst = mgr.instances[0]
+    for idx, (status, material, color) in enumerate(specs):
+        inst.inventory[idx] = {
+            "status": status,
+            "material": material,
+            "color": list(color),
+            "temp": 200 if status == "ready" else 0,
+            "rfid": bool(material),
+        }
+
+
+class AutoToolMapUploadAndPrintTests(unittest.TestCase):
+    """Upload-and-print (external print) automatic slot matching before first T<n>."""
+
+    def _setup_print(self, slots, meta, print_state="printing", filename="box.gcode"):
+        printer, mgr = _manager(print_state=print_state)
+        printer.print_stats.filename = filename
+        _set_slots(mgr, slots)
+        fetches = []
+
+        def fetch(fname):
+            fetches.append(fname)
+            return dict(meta)
+
+        mgr._auto_tool_mapper._metadata_fetcher = fetch
+        calls = []
+        mgr.perform_tool_change = lambda cur, tgt, *a, **k: calls.append(tgt) or "ok"
+        return printer, mgr, calls, fetches
+
+    def test_slots_already_match_does_not_set_map(self):
+        # Slot 0 already holds PLA; even though slot 3 has a closer colour, do nothing.
+        slots = [
+            ("ready", "PLA", (255, 255, 255)),
+            ("empty", "", (0, 0, 0)),
+            ("ready", "PETG", (40, 170, 80)),
+            ("ready", "PLA", (0, 193, 174)),
+        ]
+        meta = {"referenced_tools": [0], "filament_type": "PLA", "filament_colors": ["#00C1AE"]}
+        printer, mgr, calls, fetches = self._setup_print(slots, meta)
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 0}))
+        self.assertEqual(mgr.get_tool_map(), {})
+        self.assertEqual(calls, [0])
+        self.assertEqual(fetches, ["box.gcode"])
+        self.assertFalse(any("Otomatik yuva eşleştirme" in m for m in printer.gcode.info))
+
+    def test_empty_slot_triggers_auto_map_before_first_toolchange(self):
+        # Classic Upload-and-Print case: T0 sliced as PLA, slot 0 empty, slot 3 holds PLA.
+        slots = [
+            ("empty", "", (0, 0, 0)),
+            ("empty", "", (0, 0, 0)),
+            ("ready", "PETG", (40, 170, 80)),
+            ("ready", "PLA", (245, 245, 245)),
+        ]
+        meta = {"referenced_tools": [0], "filament_type": "PLA", "filament_colors": ["#FFFFFF"]}
+        printer, mgr, calls, _ = self._setup_print(slots, meta)
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 0}))
+        self.assertEqual(mgr.get_tool_map(), {0: 3})
+        self.assertEqual(calls, [3])
+        self.assertTrue(any("Otomatik yuva eşleştirme: T0→4" in m for m in printer.gcode.info))
+
+    def test_material_mismatch_triggers_auto_map(self):
+        # Slot 0 has PETG while file wants PLA; slot 2 has PLA -> auto-map T0 -> slot 3 (index 2).
+        slots = [
+            ("ready", "PETG", (40, 170, 80)),
+            ("empty", "", (0, 0, 0)),
+            ("ready", "PLA", (245, 245, 245)),
+            ("empty", "", (0, 0, 0)),
+        ]
+        meta = {"referenced_tools": [0], "filament_type": "PLA"}
+        printer, mgr, calls, _ = self._setup_print(slots, meta)
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 0}))
+        self.assertEqual(mgr.get_tool_map(), {0: 2})
+        self.assertEqual(calls, [2])
+        self.assertTrue(any("Otomatik yuva eşleştirme: T0→3" in m for m in printer.gcode.info))
+
+    def test_screen_map_is_never_overwritten_or_doubled(self):
+        # Screen sent ACE_SET_TOOL_MAP before print_start (even an override to PETG slot 2).
+        slots = [
+            ("empty", "", (0, 0, 0)),
+            ("empty", "", (0, 0, 0)),
+            ("ready", "PETG", (40, 170, 80)),
+            ("ready", "PLA", (245, 245, 245)),
+        ]
+        meta = {"referenced_tools": [0], "filament_type": "PLA"}
+        printer, mgr, calls, fetches = self._setup_print(slots, meta, print_state="standby")
+        cmd_mod.cmd_ACE_SET_TOOL_MAP(FakeGcmd(printer.gcode, {"MAP": "0:2"}))
+        printer.print_stats.state = "printing"
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 0}))
+        self.assertEqual(mgr.get_tool_map(), {0: 2})
+        self.assertEqual(calls, [2])
+        self.assertEqual(fetches, [])
+        self.assertFalse(any("Otomatik yuva eşleştirme" in m for m in printer.gcode.info))
+
+    def test_multicolour_maps_all_tools_once_and_reuses_for_later_tools(self):
+        # T0 wants PLA, T1 wants PETG; slot 0 holds PETG, slot 1 empty, slot 2 holds PLA -> T0->2 (3), T1->0 (1).
+        slots = [
+            ("ready", "PETG", (40, 170, 80)),
+            ("empty", "", (0, 0, 0)),
+            ("ready", "PLA", (245, 245, 245)),
+            ("empty", "", (0, 0, 0)),
+        ]
+        meta = {"referenced_tools": [0, 1], "filament_type": "PLA;PETG"}
+        printer, mgr, calls, fetches = self._setup_print(slots, meta)
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 0}))
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 1}))
+        self.assertEqual(mgr.get_tool_map(), {0: 2, 1: 0})
+        self.assertEqual(calls, [2, 0])
+        self.assertEqual(fetches, ["box.gcode"])
+        self.assertTrue(any("Otomatik yuva eşleştirme: T0→3, T1→1" in m for m in printer.gcode.info))
+
+    def test_insufficient_loaded_slots_preserves_existing_behaviour(self):
+        # File needs ABS; no ABS slot exists -> do not set map, fall through to normal T0 path.
+        slots = [
+            ("empty", "", (0, 0, 0)),
+            ("empty", "", (0, 0, 0)),
+            ("ready", "PETG", (40, 170, 80)),
+            ("ready", "PLA", (245, 245, 245)),
+        ]
+        meta = {"referenced_tools": [0], "filament_type": "ABS"}
+        printer, mgr, calls, _ = self._setup_print(slots, meta)
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 0}))
+        self.assertEqual(mgr.get_tool_map(), {})
+        self.assertEqual(calls, [0])
+        self.assertFalse(any("Otomatik yuva eşleştirme" in m for m in printer.gcode.info))
+
+    def test_idle_manual_toolchange_never_auto_maps(self):
+        slots = [
+            ("empty", "", (0, 0, 0)),
+            ("empty", "", (0, 0, 0)),
+            ("empty", "", (0, 0, 0)),
+            ("ready", "PLA", (245, 245, 245)),
+        ]
+        meta = {"referenced_tools": [0], "filament_type": "PLA"}
+        printer, mgr, calls, fetches = self._setup_print(slots, meta, print_state="standby")
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 0}))
+        self.assertEqual(mgr.get_tool_map(), {})
+        self.assertEqual(calls, [0])
+        self.assertEqual(fetches, [])
+
+    def test_unknown_material_in_direct_slot_is_not_remapped(self):
+        # Non-RFID spool in slot 0 ("Unknown") should stay on slot 0 rather than stealing RFID PLA in slot 3.
+        slots = [
+            ("ready", "Unknown", (0, 0, 0)),
+            ("empty", "", (0, 0, 0)),
+            ("empty", "", (0, 0, 0)),
+            ("ready", "PLA", (245, 245, 245)),
+        ]
+        meta = {"referenced_tools": [0], "filament_type": "PLA"}
+        printer, mgr, calls, _ = self._setup_print(slots, meta)
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 0}))
+        self.assertEqual(mgr.get_tool_map(), {})
+        self.assertEqual(calls, [0])
+
+    def test_prefetch_during_g9111_and_re_evaluation_on_next_print(self):
+        slots = [
+            ("empty", "", (0, 0, 0)),
+            ("empty", "", (0, 0, 0)),
+            ("empty", "", (0, 0, 0)),
+            ("ready", "PLA", (245, 245, 245)),
+        ]
+        meta = {"referenced_tools": [0], "filament_type": "PLA"}
+        printer, mgr, calls, fetches = self._setup_print(slots, meta)
+        # Simulate 2 s health tick while G9111 is heating/homing (prefetch runs in background)
+        mgr.update_tool_map_lifecycle()
+        entry = mgr._auto_tool_mapper._prefetch
+        self.assertIsNotNone(entry)
+        self.assertTrue(entry.done.wait(timeout=2.0))
+        # Now G9111 reaches T0: uses prefetched metadata without fetching twice
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 0}))
+        self.assertEqual(calls, [3])
+        self.assertEqual(fetches, ["box.gcode"])
+        # Print completes -> map & auto-map state reset -> next print of the same file re-evaluates
+        printer.print_stats.state = "complete"
+        mgr.update_tool_map_lifecycle()
+        self.assertEqual(mgr.get_tool_map(), {})
+        # User now puts PLA into slot 0 for the second print of box.gcode
+        mgr.instances[0].inventory[0]["status"] = "ready"
+        mgr.instances[0].inventory[0]["material"] = "PLA"
+        printer.print_stats.state = "printing"
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 0}))
+        self.assertEqual(mgr.get_tool_map(), {})
+        self.assertEqual(calls, [3, 0])
+        self.assertEqual(len(fetches), 2)
+
+    def test_http_metadata_fetch_end_to_end_on_first_toolchange(self):
+        import http.server
+        import json
+        import threading
+
+        seen_paths = []
+        payload = {"result": {"referenced_tools": [0], "filament_type": "PLA",
+                              "filament_colors": ["#FFFFFF"]}}
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                seen_paths.append(self.path)
+                body = json.dumps(payload).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            printer, mgr = _manager(print_state="printing")
+            printer.print_stats.filename = "dir/my model.gcode"
+            mgr._auto_tool_mapper.base_url = f"http://127.0.0.1:{port}"
+            _set_slots(mgr, [
+                ("empty", "", (0, 0, 0)),
+                ("empty", "", (0, 0, 0)),
+                ("empty", "", (0, 0, 0)),
+                ("ready", "PLA", (245, 245, 245)),
+            ])
+            calls = []
+            mgr.perform_tool_change = lambda cur, tgt, *a, **k: calls.append(tgt) or "ok"
+            cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 0}))
+            self.assertEqual(calls, [3])
+            self.assertEqual(mgr.get_tool_map(), {0: 3})
+            self.assertEqual(seen_paths, ["/server/files/metadata?filename=dir/my%20model.gcode"])
+        finally:
+            server.shutdown()
+            server.server_close()
+
+
 if __name__ == "__main__":
     unittest.main()

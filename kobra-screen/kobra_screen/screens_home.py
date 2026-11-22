@@ -390,7 +390,10 @@ def control_extra(app):
         app.dirty = True
 
     def extrude(length):
-        return lambda: app.gcode("M83\nG1 E%d F300\nM82" % length)
+        return lambda: app.gcode(
+            "SAVE_GCODE_STATE NAME=_screen_extrude\nM83\nG1 E%d F300\nM400\nRESTORE_GCODE_STATE NAME=_screen_extrude"
+            % length
+        )
 
     return [Card([
         fan_card(app, pad=6),

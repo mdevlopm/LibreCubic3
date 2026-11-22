@@ -448,6 +448,7 @@ STRINGS = {
     "Nozul soğuyor: %.0f°C / %.0f°C": "Nozzle cooling: %.0f°C / %.0f°C",
     "Hangi ısıtıcı ayarlansın?": "Which heater to tune?",
     "Nozul 220°": "Nozzle 220°",
+    "Nozul 230°": "Nozzle 230°",
     "Tabla 60°": "Bed 60°",
     "PID ayarı yapılıyor. Birkaç dakika sürer, yazıcıya dokunma.": (
         "Running PID calibration. Takes a few minutes, do not touch printer."
@@ -870,6 +871,7 @@ STRINGS = {
     'Değiştirmek için yuvaya dokun.': 'Tap a slot to change it.',
     'Elle seçim var.': 'Changed by hand.',
     'Otomatik': 'Auto',
+    'Otomatik yuva eşleştirme: %s': 'Auto slot mapping: %s',
 }
 
 ERROR_PATTERNS = (

@@ -198,3 +198,56 @@ def next_slot(entries, tool, slots):
     if current not in choices:
         return choices[0]
     return choices[(choices.index(current) + 1) % len(choices)]
+
+
+_UNKNOWN_MATERIALS = frozenset({"", "UNKNOWN", "???", "N/A", "NA", "NONE"})
+
+
+def _is_unknown_material(material):
+    return _norm(material) in _UNKNOWN_MATERIALS
+
+
+def needs_auto_map(meta, slots):
+    """True when at least one tool used by the file has an empty or clearly mismatched ACE slot.
+
+    Slots whose material is unset/unknown (non-RFID spools without manual metadata) are treated as
+    not clearly mismatched when the slot is loaded, so a user-placed spool in the expected slot is kept.
+    """
+    meta = meta or {}
+    by_tool = {_slot_tool(s): s for s in loaded_slots(slots)}
+    for tool in used_tools(meta):
+        slot = by_tool.get(tool)
+        if slot is None:
+            return True
+        material, _ = file_filament(meta, tool)
+        loaded_mat = slot.get("material")
+        if not _is_unknown_material(loaded_mat) and material_cost(material, loaded_mat) is None:
+            return True
+    return False
+
+
+def auto_plan(meta, slots, current_tool=-1):
+    """Plan for an external (non-screen) print.
+
+    Returns ``None`` when every used tool's same-numbered slot is already ready with a compatible
+    material, when no complete mapping can be built, or when the chosen plan is an identity map.
+    Otherwise returns the ``plan()`` entries so the caller can apply the exact same slot selection
+    used by the print screen.
+    """
+    if not needs_auto_map(meta, slots):
+        return None
+    entries = plan(meta, slots, current_tool=current_tool)
+    if not entries or unresolved(entries):
+        return None
+    if all(e["slot"] == e["tool"] for e in entries):
+        return None
+    return entries
+
+
+def format_summary(entries):
+    """One-line mapping summary using 1-based ACE slot numbers, e.g. 'T0→3, T1→1'."""
+    return ", ".join(
+        "T%d→%d" % (e["tool"], e["slot"] + 1)
+        for e in (entries or ())
+        if e.get("slot") is not None
+    )
