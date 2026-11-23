@@ -122,6 +122,11 @@ CURRENT_PKG_VER=$(tr -d ' \t\r\n' < "$PROJECT_ROOT/VERSION")
 cmp -s "$WORK/unpack_install/update_swu/leviq3/leviq3.py" "$PARENT_ROOT/leviq3-klipper/leviq3.py" || fail "Paket içi leviq3.py güncel değil"
 cmp -s "$WORK/unpack_install/update_swu/leviq3/leviq3.cfg" "$PARENT_ROOT/leviq3-klipper/leviq3.cfg" || fail "Paket içi leviq3.cfg güncel değil"
 cmp -s "$WORK/unpack_install/update_swu/config/open_kobra_homing.cfg" "$PROJECT_ROOT/config/open_kobra_homing.cfg" || fail "Paket içi open_kobra_homing.cfg güncel değil"
+# Klipper cuts a value at " #" (inline comment), so a Jinja comment "{# ... #}" is left
+# unclosed and the macro template fails to load: Klipper does not start
+if grep -n '{#' "$PROJECT_ROOT/config/open_kobra_homing.cfg"; then
+    fail "open_kobra_homing.cfg: Jinja yorumu ({# #}) Klipper'da açılışı bozar, '#' satır yorumu kullanın"
+fi
 pass "Kurulum ve kaldırma SWU paketleri K3 parolasıyla açıldı, içerikler doğrulandı"
 
 # real tree (if packaged) must be byte-identical to the dist package

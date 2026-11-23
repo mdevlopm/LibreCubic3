@@ -2,7 +2,7 @@
     "$version": "1",
     "name": "Kobra Screen",
     "description": "Touchscreen UI for the Anycubic Kobra 3 and ACE Pro (Moonraker / Klipper)",
-    "version": "0.3.6",
+    "version": "0.3.7",
     "requirements": {
         "cpu": 5,
         "memory": 25

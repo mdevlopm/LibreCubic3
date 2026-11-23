@@ -19,9 +19,17 @@ class Moonraker:
         "/printer/print/pause",
         "/printer/print/cancel",
     })
+    # Never retried on a timeout (a retry would run the command twice) and kept off the shared connection
     _LONG_PATHS = frozenset({
         "/printer/gcode/script",
+        "/printer/print/resume",
     })
+    # Moonraker answers these only when the macro has finished: PAUSE parks (and may cut),
+    # RESUME reheats, purges and returns, CANCEL_PRINT cuts and unloads the ACE
+    PAUSE_TIMEOUT = 60.0
+    RESUME_TIMEOUT = 300.0
+    CANCEL_TIMEOUT = 90.0
+    START_TIMEOUT = 30.0
 
     def __init__(self, host="127.0.0.1", port=7125, timeout=5.0):
         self.host = host
@@ -197,16 +205,17 @@ class Moonraker:
         return payload.get("result", payload) if isinstance(payload, dict) else payload
 
     def print_start(self, filename):
-        return self._request("POST", "/printer/print/start?filename=" + urllib.parse.quote(filename))
+        return self._request("POST", "/printer/print/start?filename=" + urllib.parse.quote(filename),
+                             timeout=self.START_TIMEOUT, isolated=True)
 
     def print_pause(self):
-        return self._request("POST", "/printer/print/pause")
+        return self._request("POST", "/printer/print/pause", timeout=self.PAUSE_TIMEOUT)
 
     def print_resume(self):
-        return self._request("POST", "/printer/print/resume")
+        return self._request("POST", "/printer/print/resume", timeout=self.RESUME_TIMEOUT)
 
     def print_cancel(self):
-        return self._request("POST", "/printer/print/cancel")
+        return self._request("POST", "/printer/print/cancel", timeout=self.CANCEL_TIMEOUT)
 
     def emergency_stop(self, timeout=None):
         tout = min(self.timeout, 3.0) if timeout is None else timeout

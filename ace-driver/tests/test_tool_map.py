@@ -77,6 +77,35 @@ class ToolMapToolChangeTests(unittest.TestCase):
         self.assertEqual(unloads, [3])
 
 
+class RawToolChangeTests(unittest.TestCase):
+    def test_raw_tool_is_a_physical_slot_and_skips_the_map(self):
+        # RESUME and the runout Retry button pass the physical tool that is loaded
+        printer, mgr = _manager(print_state="paused")
+        mgr.set_tool_map({0: 3, 3: 0})
+        calls = []
+        mgr.perform_tool_change = lambda cur, tgt, *a, **k: calls.append(tgt) or "ok"
+        cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(FakeGcmd(printer.gcode, {"TOOL": 3, "RAW": 1}))
+        self.assertEqual(calls, [3])
+        self.assertFalse(any("tool map" in m for m in printer.gcode.info))
+
+    def test_wrapper_lets_a_startup_abort_stop_g9111(self):
+        printer, _mgr = _manager(print_state="printing")
+        gcmd = FakeGcmd(printer.gcode, {"TOOL": 0})
+
+        def failing(manager, g, tool):
+            err = RuntimeError("load failed")
+            err.ace_startup_abort = True
+            raise err
+
+        orig = cmd_mod.cmd_ACE_CHANGE_TOOL
+        cmd_mod.cmd_ACE_CHANGE_TOOL = failing
+        try:
+            with self.assertRaises(RuntimeError):
+                cmd_mod.cmd_ACE_CHANGE_TOOL_WRAPPER(gcmd)
+        finally:
+            cmd_mod.cmd_ACE_CHANGE_TOOL = orig
+
+
 class ToolMapLifecycleTests(unittest.TestCase):
     def test_map_survives_until_print_ends(self):
         printer, mgr = _manager()

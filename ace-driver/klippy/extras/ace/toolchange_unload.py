@@ -52,8 +52,11 @@ class ToolchangeUnloadHelper:
             ace_inst.wait_ready()
             ace_inst._retract(local_slot, length=retract_length, speed=retract_speed)
 
-            mgr.gcode.run_script_from_command("M83")  # Relative extrusion
+            # Relative extrusion for this move only; the print's own E mode is restored
+            mgr.gcode.run_script_from_command("SAVE_GCODE_STATE NAME=_ace_cycle_retract")
+            mgr.gcode.run_script_from_command("M83")
             mgr.gcode.run_script_from_command(f"G1 E-{retract_length} F{retract_speed_mmmin}")
+            mgr.gcode.run_script_from_command("RESTORE_GCODE_STATE NAME=_ace_cycle_retract")
 
             ace_inst.wait_ready()
             motion_time = retract_length / retract_speed

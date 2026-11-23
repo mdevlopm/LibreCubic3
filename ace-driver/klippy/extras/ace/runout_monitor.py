@@ -609,7 +609,7 @@ class RunoutMonitor:
         )
 
         self._run_gcode(
-            f'RESPOND TYPE=command MSG="action:prompt_button Retry T{tool_index}|T{tool_index}|primary"'
+            f'RESPOND TYPE=command MSG="action:prompt_button Retry T{tool_index}|ACE_CHANGE_TOOL TOOL={tool_index} RAW=1|primary"'
         )
 
         if getattr(self.manager, "toolhead_extrusion_allowed", False):
@@ -710,6 +710,16 @@ class RunoutMonitor:
             self.gcode.respond_info(
                 f"ACE: Endless spool match found: T{tool_index} → T{next_tool}"
             )
+
+            # The user may have cancelled the print meanwhile: never swap and resume then
+            print_stats = self.manager.printer.lookup_object("print_stats", None)
+            if print_stats is not None:
+                state = print_stats.get_status(self.manager.reactor.monotonic()).get("state")
+                if state not in ("printing", "paused"):
+                    self.gcode.respond_info(
+                        f"ACE: Print is '{state}' - skipping endless spool swap"
+                    )
+                    return
 
             # Close prompt before auto-swap (since we're handling it automatically)
             self._run_gcode(

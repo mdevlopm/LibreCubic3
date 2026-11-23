@@ -1890,9 +1890,13 @@ class Paket5HardeningTests(unittest.TestCase):
             gcode.run_script_from_command = fail_retract
             with self.assertRaises(CommandError):
                 printer.run(cmd)
+            # the caller's extrusion mode is restored (not forced to M82)
             self.assertIn("M83", gcode.log)
-            self.assertIn("M82", gcode.log)
-            self.assertGreater(gcode.log.index("M82"), gcode.log.index("M83"))
+            self.assertIn("RESTORE_GCODE_STATE NAME=_leviq3_extrude", gcode.log)
+            self.assertGreater(gcode.log.index("RESTORE_GCODE_STATE NAME=_leviq3_extrude"),
+                               gcode.log.index("M83"))
+            self.assertLess(gcode.log.index("SAVE_GCODE_STATE NAME=_leviq3_extrude"),
+                            gcode.log.index("M83"))
 
     def test_double_probe_failure_in_rewipe_window_does_not_heat_or_save_config(self):
         printer = self.printer(

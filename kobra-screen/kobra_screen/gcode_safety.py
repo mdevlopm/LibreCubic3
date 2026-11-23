@@ -224,6 +224,10 @@ class _AppGcodeMixin:
         """
         if not gcode_script:
             return False
+        if gcode_script.strip().upper() == "CANCEL_PRINT":
+            # same path as the Stop button: own thread, emergency stop offer if Klipper is stuck
+            self.cancel_print()
+            return True
         return self.gcode(gcode_script)
 
     def start_print(self, path):

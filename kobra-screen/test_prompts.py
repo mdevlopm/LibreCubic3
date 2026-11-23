@@ -121,11 +121,12 @@ class PromptDialogAppTests(unittest.TestCase):
         self.assertFalse(self.app.press("Resume"))
         self.assertNotIn("RESUME", self.printer.gcodes)
 
-        # 4. Non-extrusion button sends gcode via app.gcode()
-        with mock.patch.object(self.app, "gcode", wraps=self.app.gcode) as gcode_spy:
+        # 4. Cancel Print goes through the Stop button's path (own thread, e-stop offer if stuck)
+        with mock.patch.object(self.app, "cancel_print") as cancel_spy, \
+                mock.patch.object(self.app, "gcode", wraps=self.app.gcode) as gcode_spy:
             self.assertTrue(self.app.press("Cancel"))
-            gcode_spy.assert_called_once_with("CANCEL_PRINT")
-        self.assertIn("CANCEL_PRINT", self.printer.gcodes)
+            cancel_spy.assert_called_once_with()
+            gcode_spy.assert_not_called()
 
         # 5. Unlocking extrusion enables the _EXTRUDE and RESUME buttons and sends gcode
         self.app.extrusion_lock = False

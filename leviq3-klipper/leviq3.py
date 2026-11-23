@@ -578,13 +578,15 @@ class LeviQ3:
         orig = self._get_zoffset()
         orig_comp = self.temp_comp
         self._cool_to_end_temp()
+        # keep the caller's extrusion mode (slicers start prints in M83)
+        self._run("SAVE_GCODE_STATE NAME=_leviq3_extrude")
         self._run("M83")
         try:
             self._run("G92 E0")
             self._run_cold_retract(gcmd, "G1 E-0.05 F100")
             self._run("M400")
         finally:
-            self._run("M82")
+            self._run("RESTORE_GCODE_STATE NAME=_leviq3_extrude")
         # FORCE=1 measures once without touching the saved on/off switch
         # (the screen's z-offset wizard); stock callers never pass it
         if (self.auto_zoffset_on_off <= 0
@@ -700,11 +702,12 @@ class LeviQ3:
             if self.bed_soak_time:
                 self._run("G4 P%d" % (int(round(self.bed_soak_time * 1000.)),))
             self._run("M109 S%f" % (self.extru_temp,))
+            self._run("SAVE_GCODE_STATE NAME=_leviq3_extrude")
             self._run("M83")
             try:
                 self._run_cold_retract(gcmd, "G1 E-10 F400")
             finally:
-                self._run("M82")
+                self._run("RESTORE_GCODE_STATE NAME=_leviq3_extrude")
             self._run("G92 E0")
             self._run("M400")
         except Exception:

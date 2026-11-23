@@ -1450,11 +1450,8 @@ def cmd_ACE_HANDLE_PRINT_END(gcmd):
         gcmd.respond_info("ACE: Print end - skipping unload (CUT_TIP=0), tool remains loaded")
 
         # Disable feed assist on all instances when print ends.
-        tool_index = manager.state.get("ace_current_index", -1)
-        if tool_index >= 0:
-            for_each_instance(lambda inst_num, mgr, instance: instance._disable_feed_assist(instance._feed_assist_index))
-            gcmd.respond_info(
-                "ACE: Feed assist disabled for all instances")
+        for_each_instance(lambda inst_num, mgr, instance: instance._disable_feed_assist(instance._feed_assist_index))
+        gcmd.respond_info("ACE: Feed assist disabled for all instances")
 
         # Refresh Orca lane_data snapshot after print end even when keeping filament loaded
         manager._sync_moonraker_lane_data(force=True, reason="print_end_skip_cut")
@@ -1475,13 +1472,17 @@ def cmd_ACE_HANDLE_PRINT_END(gcmd):
         if success:
             gcmd.respond_info(f"ACE: Tool T{tool_index} successfully unloaded")
             manager.state.set("ace_current_index", -1)
-            for_each_instance(lambda inst_num, mgr, instance: instance._disable_feed_assist(instance._feed_assist_index))
         else:
             emit_error(gcmd, f"ACE: Tool T{tool_index} unload may have failed")
 
     except Exception as e:
         emit_error(gcmd, f"ACE: PRINT_END error: {e}")
     finally:
+        # The print is over whatever happened above: never leave feed assist pushing
+        try:
+            for_each_instance(lambda inst_num, mgr, instance: instance._disable_feed_assist(instance._feed_assist_index))
+        except Exception:
+            logging.exception("ACE: Failed to disable feed assist at print end")
         # Flush all deferred state changes to disk now that the print is over.
         try:
             manager.state.flush()
@@ -1524,7 +1525,9 @@ def cmd_ACE_CHANGE_TOOL(manager, gcmd, tool_index):
         return
 
     requested_tool = tool_index  # the file's tool: Retry must go through the tool map again
-    if tool_index >= 0:
+    # RAW=1: tool_index is already a physical ACE tool (RESUME, runout retry) - no tool map
+    raw = gcmd.get_int("RAW", 0) if hasattr(gcmd, "get_int") else 0
+    if tool_index >= 0 and not raw:
         if hasattr(manager, "ensure_auto_tool_map"):
             manager.ensure_auto_tool_map(gcmd)
         mapped = manager.map_tool(tool_index)
@@ -1571,7 +1574,17 @@ def cmd_ACE_CHANGE_TOOL(manager, gcmd, tool_index):
 
         status = manager.perform_tool_change(current_tool, tool_index)
         printer.lookup_object("gcode").respond_info(f"ACE: perform_tool_change result status: {status}")
-        printer.lookup_object("gcode").run_script_from_command("SET_IDLE_TIMEOUT")
+        # PAUSE sets a 12 h idle timeout; a Retry while paused must not drop it back to 10 min
+        is_paused = False
+        try:
+            pause_resume = printer.lookup_object("pause_resume", None)
+            if pause_resume is not None and hasattr(pause_resume, "get_status"):
+                is_paused = bool(pause_resume.get_status(
+                    printer.get_reactor().monotonic()).get("is_paused"))
+        except Exception:
+            is_paused = False
+        if not is_paused:
+            printer.lookup_object("gcode").run_script_from_command("SET_IDLE_TIMEOUT")
         printer.lookup_object("gcode").respond_info(status)
 
     except Exception as e:
@@ -1715,9 +1728,16 @@ def cmd_ACE_CHANGE_TOOL(manager, gcmd, tool_index):
                 gcode.respond_info(f"Failed to show error dialog: {dialog_error}")
         else:
             gcode.run_script_from_command("M104 S0")
-            emit_error(gcode, "ACE: Initial toolchange failed, cancel print and switching extruder heater off")
+            gcode.run_script_from_command("M140 S0")
+            gcode.run_script_from_command("M106 S0")
+            if is_startup:
+                gcode.run_script_from_command(
+                    "SET_GCODE_VARIABLE MACRO=_ACE_STATE VARIABLE=startup_toolchange VALUE=0")
+            emit_error(gcode, "ACE: Initial toolchange failed, cancel print and switching heaters off")
 
-            raise gcmd.error(f"Tool change to T{tool_index} failed during startup: {str(e)}")
+            err = gcmd.error(f"Tool change to T{tool_index} failed during startup: {str(e)}")
+            err.ace_startup_abort = True  # must stop G9111, wrappers re-raise it
+            raise err
 
 
 def restore_pre_toolchange_state(state_or_manager=None, gcode=None, printer=None):
@@ -2154,6 +2174,8 @@ def cmd_ACE_CHANGE_TOOL_WRAPPER(gcmd):
         manager = ace_get_manager(0)
         cmd_ACE_CHANGE_TOOL(manager, gcmd, tool_index)
     except Exception as e:
+        if getattr(e, "ace_startup_abort", False):
+            raise
         emit_error(gcmd, f"ACE_CHANGE_TOOL error: {e}")
 
 

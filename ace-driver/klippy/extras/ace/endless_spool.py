@@ -212,6 +212,13 @@ class EndlessSpool:
                     status = self.manager.perform_tool_change(from_tool, current_target_tool, is_endless_spool=True)
                     self.gcode.respond_info(f"ACE: {status}")
 
+                    # File tools that were routed to the empty spool now go to its replacement
+                    tool_map = getattr(self.manager, "_tool_map", None)
+                    if tool_map:
+                        for file_tool, phys in list(tool_map.items()):
+                            if phys == from_tool:
+                                tool_map[file_tool] = current_target_tool
+
                     self.gcode.respond_info("ACE: Resuming print")
                     runner = (
                         getattr(self.manager.gcode, "run_script", None)

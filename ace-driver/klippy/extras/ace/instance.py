@@ -391,7 +391,14 @@ class AceInstance(InstanceStatusMixin, InstanceMotionMixin, InstanceLoadingMixin
                     response.get("msg") if response else "no response",
                 )
 
-        self.send_request(request, _done)
+        try:
+            queued = self.send_request(request, _done)
+        except Exception:
+            self._rfid_mode_pending = False
+            raise
+        if queued is False:
+            # never queued, so _done will not run: allow the next tick to try again
+            self._rfid_mode_pending = False
 
     def _tangle_policy(self):
         """Return ``(enabled, threshold_s)`` from the manager (off by default)."""

@@ -101,11 +101,13 @@ class AutoToolMapper:
         self._prefetch = None
         self._checked_filename = None
         self._checked_total_duration = 0.0
+        self._meta_misses = 0
 
     def reset(self):
         """Forget per-print state once a print ends or the tool map is cleared."""
         self._checked_filename = None
         self._checked_total_duration = 0.0
+        self._meta_misses = 0
         with self._lock:
             self._prefetch = None
 
@@ -294,7 +296,13 @@ class AutoToolMapper:
 
         meta = self._await_metadata(filename)
         if not meta:
+            # Moonraker may still be parsing a just-uploaded file: let the next T try
+            # again (at most 3 times, each wait is capped at 2 s)
+            self._meta_misses += 1
+            if self._meta_misses < 3:
+                self._checked_filename = None
             return None
+        self._meta_misses = 0
 
         try:
             current_tool = int(self.manager.state.get("ace_current_index", -1))
